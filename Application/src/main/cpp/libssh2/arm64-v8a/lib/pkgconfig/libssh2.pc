@@ -1,0 +1,17 @@
+###########################################################################
+# libssh2 installation details
+###########################################################################
+
+prefix=/home/raul/repos/Android-SFTP-Documents-Provider_RikyIsola/app/src/main/cpp/final
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: libssh2
+URL: https://www.libssh2.org/
+Description: Library for SSH-based communication
+Version: 1.11.0
+Requires.private: 
+Libs: -L${libdir} -lssh2 /home/raul/repos/Android-SFTP-Documents-Provider_RikyIsola/app/src/main/cpp/install/lib/libgcrypt.a -L/home/raul/repos/Android-SFTP-Documents-Provider_RikyIsola/app/src/main/cpp/install/lib -lgcrypt -L/home/raul/repos/Android-SFTP-Documents-Provider_RikyIsola/app/src/main/cpp/install/lib -lgpg-error -R/home/raul/repos/Android-SFTP-Documents-Provider_RikyIsola/app/src/main/cpp/install/lib
+Libs.private: /home/raul/repos/Android-SFTP-Documents-Provider_RikyIsola/app/src/main/cpp/install/lib/libgcrypt.a -L/home/raul/repos/Android-SFTP-Documents-Provider_RikyIsola/app/src/main/cpp/install/lib -lgcrypt -L/home/raul/repos/Android-SFTP-Documents-Provider_RikyIsola/app/src/main/cpp/install/lib -lgpg-error -R/home/raul/repos/Android-SFTP-Documents-Provider_RikyIsola/app/src/main/cpp/install/lib
+Cflags: -I${includedir}

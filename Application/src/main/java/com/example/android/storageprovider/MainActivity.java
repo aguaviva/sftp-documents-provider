@@ -1,0 +1,133 @@
+/*
+ * Copyright 2013 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.example.android.storageprovider;
+
+import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.graphics.Color;
+import android.os.Bundle;
+
+import androidx.fragment.app.FragmentTransaction;
+
+import android.view.Menu;
+import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.ListView;
+import android.widget.TextView;
+
+import com.example.android.common.activities.SampleActivityBase;
+import com.example.android.common.logger.Log;
+import com.example.android.common.logger.LogFragment;
+import com.example.android.common.logger.LogWrapper;
+import com.example.android.common.logger.MessageOnlyLogFilter;
+
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+
+/**
+ * A simple launcher activity containing a summary sample description
+ * and a few action bar buttons.
+ */
+public class MainActivity extends SampleActivityBase {
+
+    public static final String TAG = "MainActivity";
+
+    public static final String FRAGTAG = "StorageProviderFragment";
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
+        helpers.Init(this);
+
+        if (getSupportFragmentManager().findFragmentByTag(FRAGTAG) == null) {
+            FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
+            StorageProviderFragment fragment = new StorageProviderFragment();
+            transaction.add(fragment, FRAGTAG);
+            transaction.commit();
+        }
+
+        rebuildConnectionsList();
+
+    }
+
+    private void rebuildConnectionsList() {
+        ListView simpleList = (ListView)findViewById(R.id.list_view);
+        ArrayAdapter<String> arrayAdapter= helpers.populateListView(this, "+ Add Connections", helpers.getFilesConnections() );
+        simpleList.setAdapter(arrayAdapter);
+        simpleList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> adapterView, View view, int pos, long l) {
+                if (pos==adapterView.getCount()-1)
+                {
+                    Intent myIntent = new Intent(MainActivity.this, ConnectionManagerActivity.class);
+                    myIntent.putExtra("connection_name", "");
+                    startActivityForResult(myIntent, 0);
+                }
+            }
+        });
+        simpleList.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+            @Override
+            public boolean onItemLongClick(AdapterView<?> adapterView, View parent, int pos, long id) {
+                Intent myIntent = new Intent(MainActivity.this, ConnectionManagerActivity.class);
+                if (pos==adapterView.getCount()-1) {
+                    myIntent.putExtra("connection_name", "");
+                } else {
+                    myIntent.putExtra("connection_name", ((TextView) parent).getText().toString());
+                }
+                startActivityForResult(myIntent, 0);
+                return true;
+            }
+        });
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.main, menu);
+        return true;
+    }
+
+    /** Create a chain of targets that will receive log data */
+    @Override
+    public void initializeLogging() {
+        // Wraps Android's native log framework.
+        LogWrapper logWrapper = new LogWrapper();
+        // Using Log, front-end to the logging chain, emulates android.util.log method signatures.
+        Log.setLogNode(logWrapper);
+
+        // Filter strips out everything except the message text.
+        MessageOnlyLogFilter msgFilter = new MessageOnlyLogFilter();
+        logWrapper.setNext(msgFilter);
+
+        // On screen logging via a fragment with a TextView.
+        LogFragment logFragment = (LogFragment) getSupportFragmentManager()
+                .findFragmentById(R.id.log_fragment);
+        msgFilter.setNext(logFragment.getLogView());
+        logFragment.getLogView().setTextAppearance(this, R.style.Log);
+        logFragment.getLogView().setBackgroundColor(Color.WHITE);
+    }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        rebuildConnectionsList();
+    }
+}
