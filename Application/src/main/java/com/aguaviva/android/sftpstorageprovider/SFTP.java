@@ -5,6 +5,7 @@ import android.os.ParcelFileDescriptor;
 
 import com.example.android.common.logger.Log;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 
 public class SFTP {
@@ -90,7 +91,7 @@ public class SFTP {
 
         ParcelFileDescriptor.AutoCloseOutputStream outputStream = new ParcelFileDescriptor.AutoCloseOutputStream(writeEnd);
 
-        int sftp_handle_id = Ssh2.openfile(ssh2_sftp_session, root+documentId, Ssh2.LIBSSH2_FXF_READ);
+        int sftp_handle_id = Ssh2.openfile(ssh2_sftp_session, root+documentId, Ssh2.LIBSSH2_FXF_READ, 0);
         if (sftp_handle_id >= 0) {
             String permissions = Ssh2.get_permissions(ssh2_sftp_session, root+documentId);
             String p[] = permissions.split(" ");
@@ -166,7 +167,18 @@ public class SFTP {
 
         ParcelFileDescriptor.AutoCloseInputStream inputStream = new ParcelFileDescriptor.AutoCloseInputStream(readEnd);
 
-        int sftp_handle_id = Ssh2.openfile(ssh2_sftp_session, root+documentId, Ssh2.LIBSSH2_FXF_WRITE | Ssh2.LIBSSH2_FXF_CREAT);
+        int creation_flags =
+            Ssh2.LIBSSH2_FXF_WRITE |
+            Ssh2.LIBSSH2_FXF_CREAT |
+            Ssh2.LIBSSH2_FXF_TRUNC;
+
+        int permissions_flags =
+            Ssh2.LIBSSH2_SFTP_S_IRUSR |
+            Ssh2.LIBSSH2_SFTP_S_IWUSR |
+            Ssh2.LIBSSH2_SFTP_S_IRGRP |
+            Ssh2.LIBSSH2_SFTP_S_IROTH;
+
+        int sftp_handle_id = Ssh2.openfile( ssh2_sftp_session, root + documentId, creation_flags, permissions_flags);
         if (sftp_handle_id > 0) {
 
             long file_size = 100000;
@@ -178,16 +190,19 @@ public class SFTP {
                 long total_sent = 0;
                 while (true) {
 
-                    int length = inputStream.read(buffer);
-                    if (length > 0) {
-                        int res = Ssh2.writefile(sftp_handle_id, buffer, length);
-                        if (res < 0) {
-                            Log.e(TAG, String.format("Put: Ssh2.writefile err: %d ssh2:%d sftp:%d", length, ssh2_session_id, ssh2_sftp_session));
-                            Log.e(TAG, String.format("Put: Err: " + Ssh2.session_last_error(ssh2_session_id)));
-                            break;
+                    int length  = inputStream.read(buffer);
+                    if (length  > 0) {
+                        int offset = 0;
+                        while(length>0) {
+                            int nwritten = Ssh2.writefile(sftp_handle_id, buffer, offset, length);
+                            if (nwritten < 0) {
+                                break;
+                            }
+                            offset += nwritten;
+                            length -= nwritten;
+                            total_sent += nwritten;
                         }
 
-                        total_sent += length;
                         progress = (int) ((total_sent * 100) / file_size);
                         if (last_progress != progress) {
                             last_progress = progress;
@@ -261,6 +276,16 @@ public class SFTP {
 
     public int rename(String currentName, String newName) {
         return Ssh2.rename( ssh2_sftp_session, root+currentName, root+newName );
+    }
+
+    public int cp(String source, String target) {
+        String command = String.format("cp %s %s", root + source, root + target);
+        return Ssh2.exec(ssh2_session_id, command);
+    }
+
+    public int rm(String file) {
+        String command = String.format("rm %s", root + file);
+        return Ssh2.exec(ssh2_session_id, command);
     }
 
     public String getLastError() {

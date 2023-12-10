@@ -562,7 +562,7 @@ extern "C" JNIEXPORT jstring JNICALL  Java_com_aguaviva_android_sftpstorageprovi
 }
 
 
-extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_sftpstorageprovider_Ssh2_openfile(JNIEnv * env, jclass obj, int sftp_session_id, jstring jsftppath, int flags) {
+extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_sftpstorageprovider_Ssh2_openfile(JNIEnv * env, jclass obj, int sftp_session_id, jstring jsftppath, int creation_flags, int permissions_flags) {
 
     LIBSSH2_SFTP *sftp_session;
     if (database_sftp_session.get(sftp_session_id, &sftp_session)==false) {
@@ -571,7 +571,7 @@ extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_sftpstorageprovider_
 
     const char *sftppath = env->GetStringUTFChars(jsftppath, NULL);
 
-    LIBSSH2_SFTP_HANDLE *sftp_handle = libssh2_sftp_open(sftp_session, sftppath, flags, LIBSSH2_SFTP_OPENFILE);
+    LIBSSH2_SFTP_HANDLE *sftp_handle = libssh2_sftp_open(sftp_session, sftppath, creation_flags, permissions_flags);
 
     env->ReleaseStringUTFChars(jsftppath, sftppath);
 
@@ -608,7 +608,7 @@ extern "C" JNIEXPORT int JNICALL Java_com_aguaviva_android_sftpstorageprovider_S
 }
 
 
-extern "C" JNIEXPORT int JNICALL Java_com_aguaviva_android_sftpstorageprovider_Ssh2_writefile(JNIEnv *env, jclass clazz, jint sftp_handle_id, jbyteArray data, int length) {
+extern "C" JNIEXPORT int JNICALL Java_com_aguaviva_android_sftpstorageprovider_Ssh2_writefile(JNIEnv *env, jclass clazz, jint sftp_handle_id, jbyteArray data, int offset, int length) {
 
     LIBSSH2_SFTP_HANDLE *sftp_handle;
     if (database_sft_handle.get(sftp_handle_id, &sftp_handle) == false) {
@@ -617,7 +617,7 @@ extern "C" JNIEXPORT int JNICALL Java_com_aguaviva_android_sftpstorageprovider_S
 
     jbyte *buffer = env->GetByteArrayElements(data, NULL);
     int len = env->GetArrayLength(  data );
-    ssize_t s = libssh2_sftp_write(sftp_handle, (char *)buffer, length);
+    ssize_t s = libssh2_sftp_write(sftp_handle, ((char *)buffer)+offset, length);
 
     env->ReleaseByteArrayElements(data, buffer, 0);
 

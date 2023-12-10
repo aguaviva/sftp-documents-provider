@@ -14,6 +14,24 @@ public class Ssh2 {
     public static final int LIBSSH2_FXF_TRUNC   =      0x00000010;
     public static final int LIBSSH2_FXF_EXCL    =      0x00000020;
 
+    /* Read, write, execute/search by owner */
+    public static final int LIBSSH2_SFTP_S_IRWXU =       0000700;     /* RWX mask for owner */
+    public static final int LIBSSH2_SFTP_S_IRUSR =       0000400;     /* R for owner */
+    public static final int LIBSSH2_SFTP_S_IWUSR =       0000200;     /* W for owner */
+    public static final int LIBSSH2_SFTP_S_IXUSR =       0000100;     /* X for owner */
+
+    /* Read, write, execute/search by group */
+    public static final int LIBSSH2_SFTP_S_IRWXG =       0000070;     /* RWX mask for group */
+    public static final int LIBSSH2_SFTP_S_IRGRP =       0000040;     /* R for group */
+    public static final int LIBSSH2_SFTP_S_IWGRP =       0000020;     /* W for group */
+    public static final int LIBSSH2_SFTP_S_IXGRP =       0000010;     /* X for group */
+
+    /* Read, write, execute/search by others */
+    public static final int LIBSSH2_SFTP_S_IRWXO =       0000007;     /* RWX mask for other */
+    public static final int LIBSSH2_SFTP_S_IROTH =       0000004;     /* R for other */
+    public static final int LIBSSH2_SFTP_S_IWOTH =       0000002;     /* W for other */
+    public static final int LIBSSH2_SFTP_S_IXOTH =       0000001;     /* X for other */
+
     public static native int init_ssh();
     public static native void exit_ssh();
     public static native int session_connect(String hostname, int port);
@@ -33,10 +51,10 @@ public class Ssh2 {
     public static native int closedir(int sftp_handle_id);
     public static native String readdir(int sftp_handle_id);
 
-    public static native int openfile(int sftp_session_id, String jscppath, int flags);
+    public static native int openfile(int sftp_session_id, String jscppath, int creation_flags, int permissions_flags);
     public static native int closefile(int sftp_handle_id);
     public static native int readfile(int sftp_handle_id, byte[] data);
-    public static native int writefile(int sftp_handle_id, byte[] data, int length);
+    public static native int writefile(int sftp_handle_id, byte[] data, int offset, int length);
 
     public static native String get_permissions(int sftp_handle_id, String jscppath);
 

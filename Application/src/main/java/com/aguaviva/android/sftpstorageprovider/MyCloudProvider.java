@@ -259,10 +259,6 @@ public class MyCloudProvider extends DocumentsProvider {
             Log.v(TAG, " sortOrder: " + sortOrder);
 
             final MatrixCursor result = new MatrixCursor(resolveDocumentProjection(projection));
-                //final File parent = getFileForDocId(parentDocumentId);
-                //for (File file : parent.listFiles()) {
-                //    includeFile(result, null, file);
-                //}
 
             try {
                 sftp_client.ls(fixPath(parentDocumentId), new SFTP.Listener() {
@@ -405,20 +401,18 @@ public class MyCloudProvider extends DocumentsProvider {
     }
     // END_INCLUDE(rename_document)
 */
-/*
+
     // BEGIN_INCLUDE(delete_document)
     @Override
     public void deleteDocument(String documentId) throws FileNotFoundException {
         Log.v(TAG, "deleteDocument");
-        File file = getFileForDocId(documentId);
-        if (file.delete()) {
-            Log.i(TAG, "Deleted file with id " + documentId);
-        } else {
-            throw new FileNotFoundException("Failed to delete document with id " + documentId);
+        int res = sftp_client.rm(fixPath(documentId));
+        if (res <0) {
+            throw new FileNotFoundException(sftp_client.getLastError());
         }
     }
     // END_INCLUDE(delete_document)
-*/
+
 /*
     // BEGIN_INCLUDE(remove_document)
     @Override
@@ -465,11 +459,11 @@ public class MyCloudProvider extends DocumentsProvider {
         if (i>0) {
             String newDocumentID = targetParentDocumentId + sourceDocumentId.substring(i);
 
-            String command = String.format("command %s %s", fixPath(sourceDocumentId), fixPath(targetParentDocumentId));
-            int res = sftp_client.exec(command);
-            if (res < 0) {
-                throw new FileNotFoundException("Failed to exec " + command + " " + sftp_client.getLastError() );
+            int res = sftp_client.cp(fixPath(sourceDocumentId), fixPath(targetParentDocumentId));
+            if (res <0) {
+                throw new FileNotFoundException(sftp_client.getLastError());
             }
+
             return newDocumentID;
         }
 
