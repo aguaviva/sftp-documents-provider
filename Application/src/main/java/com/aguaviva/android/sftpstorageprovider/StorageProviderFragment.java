@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.example.android.storageprovider;
+package com.aguaviva.android.sftpstorageprovider;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -35,7 +35,7 @@ import com.example.android.common.logger.Log;
 public class StorageProviderFragment extends Fragment {
 
     private static final String TAG = "StorageProviderFragment";
-    private static final String AUTHORITY = "com.example.android.storageprovider.documents";
+    private static final String AUTHORITY = "com.aguaviva.android.sftpstorageprovider.documents";
     private boolean mLoggedIn = false;
 
     @Override

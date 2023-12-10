@@ -1,4 +1,4 @@
-package com.example.android.storageprovider;
+package com.aguaviva.android.sftpstorageprovider;
 
 import android.content.Context;
 import android.os.ParcelFileDescriptor;

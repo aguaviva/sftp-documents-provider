@@ -14,11 +14,10 @@
  * limitations under the License.
  */
 
-package com.example.android.storageprovider;
+package com.aguaviva.android.sftpstorageprovider;
 
-import android.content.Context;
+
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Bundle;
 
@@ -37,9 +36,7 @@ import com.example.android.common.logger.LogFragment;
 import com.example.android.common.logger.LogWrapper;
 import com.example.android.common.logger.MessageOnlyLogFilter;
 
-import java.io.IOException;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
+
 
 /**
  * A simple launcher activity containing a summary sample description

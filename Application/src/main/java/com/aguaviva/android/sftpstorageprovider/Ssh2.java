@@ -1,4 +1,4 @@
-package com.example.android.storageprovider;
+package com.aguaviva.android.sftpstorageprovider;
 
 import java.nio.ByteBuffer;
 
@@ -13,6 +13,7 @@ public class Ssh2 {
     public static final int LIBSSH2_FXF_CREAT   =      0x00000008;
     public static final int LIBSSH2_FXF_TRUNC   =      0x00000010;
     public static final int LIBSSH2_FXF_EXCL    =      0x00000020;
+
     public static native int init_ssh();
     public static native void exit_ssh();
     public static native int session_connect(String hostname, int port);

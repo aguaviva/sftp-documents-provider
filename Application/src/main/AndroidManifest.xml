@@ -17,7 +17,7 @@
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    package="com.example.android.storageprovider"
+    package="com.aguaviva.android.sftpstorageprovider"
     android:versionCode="1"
     android:versionName="1.0">
 
@@ -60,8 +60,8 @@
         picker UI.
         -->
         <provider
-            android:name="com.example.android.storageprovider.MyCloudProvider"
-            android:authorities="com.example.android.storageprovider.documents"
+            android:name="com.aguaviva.android.sftpstorageprovider.MyCloudProvider"
+            android:authorities="com.aguaviva.android.sftpstorageprovider.documents"
             android:exported="true"
             android:grantUriPermissions="true"
             android:permission="android.permission.MANAGE_DOCUMENTS">

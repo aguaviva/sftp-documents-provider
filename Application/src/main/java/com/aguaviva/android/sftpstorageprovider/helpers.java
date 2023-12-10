@@ -1,4 +1,4 @@
-package com.example.android.storageprovider;
+package com.aguaviva.android.sftpstorageprovider;
 
 import android.app.Activity;
 import android.content.Context;
@@ -29,8 +29,8 @@ public class helpers {
 
     static void Init(Context context) {
         filesDir = context.getFilesDir();
-        helpers.createDir(keysDir);
-        helpers.createDir(connectionsDir);
+        helpers.createDir(filesDir+keysDir);
+        helpers.createDir(filesDir+connectionsDir);
     }
 
     static public String loadString(String filename) throws IOException {

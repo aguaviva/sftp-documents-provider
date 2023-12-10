@@ -1,4 +1,4 @@
-package com.example.android.storageprovider;
+package com.aguaviva.android.sftpstorageprovider;
 
 import android.content.Intent;
 import android.os.Bundle;

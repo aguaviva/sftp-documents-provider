@@ -15,7 +15,7 @@
  */
 
 
-package com.example.android.storageprovider;
+package com.aguaviva.android.sftpstorageprovider;
 
 import static android.os.Build.VERSION.SDK_INT;
 
@@ -102,10 +102,10 @@ public class MyCloudProvider extends DocumentsProvider {
 
         Ssh2.init_ssh();
 
-        if (sftp_client!=null)
+        if (sftp_client==null)
             sftp_client = new SFTP(getContext());
 
-        if (sftp_client_mt!=null)
+        if (sftp_client_mt==null)
             sftp_client_mt = new SFTPMT(getContext());
 
         return true;

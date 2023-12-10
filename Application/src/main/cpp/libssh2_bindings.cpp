@@ -90,7 +90,7 @@ Database<Ssh2_session> database_sessions(1);
 Database<LIBSSH2_SFTP *> database_sftp_session(1000);
 Database<LIBSSH2_SFTP_HANDLE *> database_sft_handle(2000);
 
-extern "C" JNIEXPORT jint JNICALL  Java_com_example_android_storageprovider_Ssh2_init_1ssh(JNIEnv * env, jclass obj) {
+extern "C" JNIEXPORT jint JNICALL  Java_com_aguaviva_android_sftpstorageprovider_Ssh2_init_1ssh(JNIEnv * env, jclass obj) {
     int rc = libssh2_init(0);
     if (rc) {
         fprintf(stderr, "libssh2 initialization failed (%d)\n", rc);
@@ -99,7 +99,7 @@ extern "C" JNIEXPORT jint JNICALL  Java_com_example_android_storageprovider_Ssh2
     return 0;
 }
 
-extern "C" JNIEXPORT void JNICALL  Java_com_example_android_storageprovider_Ssh2_exit_1ssh(JNIEnv * env, jclass obj) {
+extern "C" JNIEXPORT void JNICALL  Java_com_aguaviva_android_sftpstorageprovider_Ssh2_exit_1ssh(JNIEnv * env, jclass obj) {
     libssh2_exit();
 }
 /*
@@ -112,7 +112,7 @@ void my_libssh2_trace_handler_func(LIBSSH2_SESSION *session,
 }
 */
 
-extern "C" JNIEXPORT jint JNICALL  Java_com_example_android_storageprovider_Ssh2_session_1connect(JNIEnv * env, jclass obj, jstring jhostname, int port) {
+extern "C" JNIEXPORT jint JNICALL  Java_com_aguaviva_android_sftpstorageprovider_Ssh2_session_1connect(JNIEnv * env, jclass obj, jstring jhostname, int port) {
     uint32_t hostaddr;
     libssh2_socket_t sock;
     struct sockaddr_in sin;
@@ -172,7 +172,7 @@ extern "C" JNIEXPORT jint JNICALL  Java_com_example_android_storageprovider_Ssh2
     return database_sessions.add(s);
 }
 
-extern "C" JNIEXPORT jint JNICALL  Java_com_example_android_storageprovider_Ssh2_session_1disconnect(JNIEnv * env, jclass obj, int ssh2_session_id) {
+extern "C" JNIEXPORT jint JNICALL  Java_com_aguaviva_android_sftpstorageprovider_Ssh2_session_1disconnect(JNIEnv * env, jclass obj, int ssh2_session_id) {
 
     Ssh2_session s;
     if (database_sessions.get(ssh2_session_id, &s)==false) {
@@ -201,7 +201,7 @@ extern "C" JNIEXPORT jint JNICALL  Java_com_example_android_storageprovider_Ssh2
     return 0;
 }
 
-extern "C" JNIEXPORT int JNICALL  Java_com_example_android_storageprovider_Ssh2_session_1set_1blocking(JNIEnv * env, jclass obj, int ssh2_session_id, int blocking) {
+extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_sftpstorageprovider_Ssh2_session_1set_1blocking(JNIEnv * env, jclass obj, int ssh2_session_id, int blocking) {
     Ssh2_session s;
     if (database_sessions.get(ssh2_session_id, &s)==false) {
         return -1;
@@ -217,7 +217,7 @@ extern "C" JNIEXPORT int JNICALL  Java_com_example_android_storageprovider_Ssh2_
     return -2;
 }
 
-extern "C" JNIEXPORT int JNICALL  Java_com_example_android_storageprovider_Ssh2_session_1get_1blocking(JNIEnv * env, jclass obj, int ssh2_session_id) {
+extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_sftpstorageprovider_Ssh2_session_1get_1blocking(JNIEnv * env, jclass obj, int ssh2_session_id) {
     Ssh2_session s;
     if (database_sessions.get(ssh2_session_id, &s)==false) {
         return -1;
@@ -233,7 +233,7 @@ extern "C" JNIEXPORT int JNICALL  Java_com_example_android_storageprovider_Ssh2_
 }
 
 
-extern "C" JNIEXPORT jstring JNICALL  Java_com_example_android_storageprovider_Ssh2_session_1get_1banner(JNIEnv * env, jclass obj, int ssh2_session_id) {
+extern "C" JNIEXPORT jstring JNICALL  Java_com_aguaviva_android_sftpstorageprovider_Ssh2_session_1get_1banner(JNIEnv * env, jclass obj, int ssh2_session_id) {
 
     Ssh2_session s;
     if (database_sessions.get(ssh2_session_id, &s)==false) {
@@ -247,7 +247,7 @@ extern "C" JNIEXPORT jstring JNICALL  Java_com_example_android_storageprovider_S
     //LOGE("%s", pBanner);
     return env->NewStringUTF(pBanner);
 }
-extern "C" JNIEXPORT jbyteArray JNICALL  Java_com_example_android_storageprovider_Ssh2_get_1host_1key_1hash(JNIEnv * env, jclass obj, int session_id) {
+extern "C" JNIEXPORT jbyteArray JNICALL  Java_com_aguaviva_android_sftpstorageprovider_Ssh2_get_1host_1key_1hash(JNIEnv * env, jclass obj, int session_id) {
 
     Ssh2_session s;
     if (database_sessions.get(session_id, &s)==false) {
@@ -264,7 +264,7 @@ extern "C" JNIEXPORT jbyteArray JNICALL  Java_com_example_android_storageprovide
     return ret;
 }
 
-extern "C" JNIEXPORT jint JNICALL  Java_com_example_android_storageprovider_Ssh2_session_1auth(JNIEnv * env, jclass obj, int session_id, jstring jusername, jstring jpubkey, jstring jprivkey, jstring jpassphrase) {
+extern "C" JNIEXPORT jint JNICALL  Java_com_aguaviva_android_sftpstorageprovider_Ssh2_session_1auth(JNIEnv * env, jclass obj, int session_id, jstring jusername, jstring jpubkey, jstring jprivkey, jstring jpassphrase) {
 
     Ssh2_session s;
     if (database_sessions.get(session_id, &s)==false) {
@@ -296,7 +296,7 @@ extern "C" JNIEXPORT jint JNICALL  Java_com_example_android_storageprovider_Ssh2
     return res;
 }
 
-extern "C" JNIEXPORT jstring JNICALL  Java_com_example_android_storageprovider_Ssh2_session_1last_1error(JNIEnv * env, jclass obj, int session_id) {
+extern "C" JNIEXPORT jstring JNICALL  Java_com_aguaviva_android_sftpstorageprovider_Ssh2_session_1last_1error(JNIEnv * env, jclass obj, int session_id) {
 
     Ssh2_session s;
     if (database_sessions.get(session_id, &s)==false) {
@@ -313,7 +313,7 @@ extern "C" JNIEXPORT jstring JNICALL  Java_com_example_android_storageprovider_S
 
 extern "C"
 JNIEXPORT jint JNICALL
-Java_com_example_android_storageprovider_Ssh2_exec(JNIEnv *env, jclass clazz, jint ssh2_session_id,
+Java_com_aguaviva_android_sftpstorageprovider_Ssh2_exec(JNIEnv *env, jclass clazz, jint ssh2_session_id,
                                                    jstring jcommand) {
 
     Ssh2_session s;
@@ -343,7 +343,7 @@ Java_com_example_android_storageprovider_Ssh2_exec(JNIEnv *env, jclass clazz, ji
 
 }
 
-extern "C" JNIEXPORT int JNICALL  Java_com_example_android_storageprovider_Ssh2_receive(JNIEnv * env, jclass obj, int session_id, jstring jscppath) {
+extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_sftpstorageprovider_Ssh2_receive(JNIEnv * env, jclass obj, int session_id, jstring jscppath) {
 
     Ssh2_session s;
     if (database_sessions.get(session_id, &s)==false) {
@@ -399,7 +399,7 @@ extern "C" JNIEXPORT int JNICALL  Java_com_example_android_storageprovider_Ssh2_
     return 0;
 }
 
-extern "C" JNIEXPORT int JNICALL  Java_com_example_android_storageprovider_Ssh2_sftp_1init(JNIEnv * env, jclass obj, int session_id) {
+extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_sftpstorageprovider_Ssh2_sftp_1init(JNIEnv * env, jclass obj, int session_id) {
 
     Ssh2_session s;
     if (database_sessions.get(session_id, &s)==false) {
@@ -415,7 +415,7 @@ extern "C" JNIEXPORT int JNICALL  Java_com_example_android_storageprovider_Ssh2_
 
 }
 
-extern "C" JNIEXPORT int JNICALL  Java_com_example_android_storageprovider_Ssh2_sftp_1shutdown(JNIEnv * env, jclass obj, int sftp_session_id) {
+extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_sftpstorageprovider_Ssh2_sftp_1shutdown(JNIEnv * env, jclass obj, int sftp_session_id) {
 
     LIBSSH2_SFTP *sftp_session;
     if (database_sftp_session.get(sftp_session_id, &sftp_session)==false) {
@@ -432,7 +432,7 @@ extern "C" JNIEXPORT int JNICALL  Java_com_example_android_storageprovider_Ssh2_
 
 extern "C"
 JNIEXPORT int JNICALL
-Java_com_example_android_storageprovider_Ssh2_rename(JNIEnv *env, jclass clazz, jint sftp_session_id,
+Java_com_aguaviva_android_sftpstorageprovider_Ssh2_rename(JNIEnv *env, jclass clazz, jint sftp_session_id,
                                                      jstring jscppath, jstring jscppath_new) {
     LIBSSH2_SFTP *sftp_session;
     if (database_sftp_session.get(sftp_session_id, &sftp_session)==false) {
@@ -452,7 +452,7 @@ Java_com_example_android_storageprovider_Ssh2_rename(JNIEnv *env, jclass clazz, 
 
 extern "C"
 JNIEXPORT jstring JNICALL
-Java_com_example_android_storageprovider_Ssh2_get_1permissions(JNIEnv *env, jclass clazz,
+Java_com_aguaviva_android_sftpstorageprovider_Ssh2_get_1permissions(JNIEnv *env, jclass clazz,
                                                                jint sftp_session_id,
                                                                jstring jsftppath ) {
     LIBSSH2_SFTP *sftp_session;
@@ -501,12 +501,12 @@ Java_com_example_android_storageprovider_Ssh2_get_1permissions(JNIEnv *env, jcla
 
     permissions[10]=' ';
 
-    sprintf(&permissions[11],"%ld %" PRIu64, attrs.atime, attrs.filesize);
+    sprintf(&permissions[11],"%ld %llu", attrs.atime, attrs.filesize);
 
     return env->NewStringUTF(permissions);
 }
 
-extern "C" JNIEXPORT int JNICALL  Java_com_example_android_storageprovider_Ssh2_opendir(JNIEnv * env, jclass obj, int sftp_session_id, jstring jsftppath) {
+extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_sftpstorageprovider_Ssh2_opendir(JNIEnv * env, jclass obj, int sftp_session_id, jstring jsftppath) {
 
     LIBSSH2_SFTP *sftp_session;
     if (database_sftp_session.get(sftp_session_id, &sftp_session)==false) {
@@ -523,7 +523,7 @@ extern "C" JNIEXPORT int JNICALL  Java_com_example_android_storageprovider_Ssh2_
 
 }
 
-extern "C" JNIEXPORT int JNICALL  Java_com_example_android_storageprovider_Ssh2_closedir(JNIEnv * env, jclass obj, int sftp_handle_id) {
+extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_sftpstorageprovider_Ssh2_closedir(JNIEnv * env, jclass obj, int sftp_handle_id) {
 
     LIBSSH2_SFTP_HANDLE *sftp_handle;
     if (database_sft_handle.get(sftp_handle_id, &sftp_handle)==false) {
@@ -536,7 +536,7 @@ extern "C" JNIEXPORT int JNICALL  Java_com_example_android_storageprovider_Ssh2_
     return 0;
 }
 
-extern "C" JNIEXPORT jstring JNICALL  Java_com_example_android_storageprovider_Ssh2_readdir(JNIEnv * env, jclass obj, int sftp_handle_id) {
+extern "C" JNIEXPORT jstring JNICALL  Java_com_aguaviva_android_sftpstorageprovider_Ssh2_readdir(JNIEnv * env, jclass obj, int sftp_handle_id) {
 
     LIBSSH2_SFTP_HANDLE *sftp_handle;
     if (database_sft_handle.get(sftp_handle_id, &sftp_handle) == false) {
@@ -562,7 +562,7 @@ extern "C" JNIEXPORT jstring JNICALL  Java_com_example_android_storageprovider_S
 }
 
 
-extern "C" JNIEXPORT int JNICALL  Java_com_example_android_storageprovider_Ssh2_openfile(JNIEnv * env, jclass obj, int sftp_session_id, jstring jsftppath, int flags) {
+extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_sftpstorageprovider_Ssh2_openfile(JNIEnv * env, jclass obj, int sftp_session_id, jstring jsftppath, int flags) {
 
     LIBSSH2_SFTP *sftp_session;
     if (database_sftp_session.get(sftp_session_id, &sftp_session)==false) {
@@ -578,7 +578,7 @@ extern "C" JNIEXPORT int JNICALL  Java_com_example_android_storageprovider_Ssh2_
     return database_sft_handle.add(sftp_handle);
 }
 
-extern "C" JNIEXPORT int JNICALL  Java_com_example_android_storageprovider_Ssh2_closefile(JNIEnv * env, jclass obj, int sftp_handle_id) {
+extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_sftpstorageprovider_Ssh2_closefile(JNIEnv * env, jclass obj, int sftp_handle_id) {
 
     LIBSSH2_SFTP_HANDLE *sftp_handle;
     if (database_sft_handle.get(sftp_handle_id, &sftp_handle)==false) {
@@ -591,7 +591,7 @@ extern "C" JNIEXPORT int JNICALL  Java_com_example_android_storageprovider_Ssh2_
     return 0;
 }
 
-extern "C" JNIEXPORT int JNICALL Java_com_example_android_storageprovider_Ssh2_readfile(JNIEnv *env, jclass clazz, jint sftp_handle_id, jbyteArray data) {
+extern "C" JNIEXPORT int JNICALL Java_com_aguaviva_android_sftpstorageprovider_Ssh2_readfile(JNIEnv *env, jclass clazz, jint sftp_handle_id, jbyteArray data) {
 
     LIBSSH2_SFTP_HANDLE *sftp_handle;
     if (database_sft_handle.get(sftp_handle_id, &sftp_handle) == false) {
@@ -608,7 +608,7 @@ extern "C" JNIEXPORT int JNICALL Java_com_example_android_storageprovider_Ssh2_r
 }
 
 
-extern "C" JNIEXPORT int JNICALL Java_com_example_android_storageprovider_Ssh2_writefile(JNIEnv *env, jclass clazz, jint sftp_handle_id, jbyteArray data, int length) {
+extern "C" JNIEXPORT int JNICALL Java_com_aguaviva_android_sftpstorageprovider_Ssh2_writefile(JNIEnv *env, jclass clazz, jint sftp_handle_id, jbyteArray data, int length) {
 
     LIBSSH2_SFTP_HANDLE *sftp_handle;
     if (database_sft_handle.get(sftp_handle_id, &sftp_handle) == false) {
