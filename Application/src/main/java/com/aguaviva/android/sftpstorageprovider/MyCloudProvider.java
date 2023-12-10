@@ -24,9 +24,11 @@ import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.MatrixCursor;
 import android.icu.text.SimpleDateFormat;
+import android.net.Uri;
 import android.os.Build;
 import android.os.CancellationSignal;
 import android.os.ParcelFileDescriptor;
+import android.provider.DocumentsContract;
 import android.provider.DocumentsContract.Document;
 import android.provider.DocumentsContract.Root;
 import android.provider.DocumentsProvider;
@@ -51,6 +53,8 @@ import java.util.regex.Pattern;
  */
 public class MyCloudProvider extends DocumentsProvider {
     private static final String TAG = "MyCloudProvider";
+
+    public static final String AUTHORITY = "com.aguaviva.android.sftpstorageprovider";
 
     // Use these as the default columns to return information about a root if no specific
     // columns are requested in a query.
@@ -222,6 +226,13 @@ public class MyCloudProvider extends DocumentsProvider {
         return remotePath;
     }
 
+    private String getParent(String documentId) {
+        int l = documentId.lastIndexOf("/");
+        String parentId = documentId.substring(0, l);
+        return parentId;
+    }
+
+
     // BEGIN_INCLUDE(query_document)
     @Override
     public Cursor queryDocument(String documentId, String[] projection)
@@ -321,18 +332,7 @@ public class MyCloudProvider extends DocumentsProvider {
     //Test if a document is descendant (child, grandchild, etc) from the given parent.
     @Override
     public boolean isChildDocument(String parentDocumentId, String documentId) {
-        //Log.v(TAG, "isChildDocument");
-
-        boolean is_child = documentId.startsWith(parentDocumentId+"/");
-
-        //Log.v(TAG, String.format("%s %s %b", parentDocumentId, documentId, is_child));
-
-        if (is_child)
-        {
-            return true;
-        }
-
-        return false;
+        return documentId.startsWith(parentDocumentId);
     }
     // END_INCLUDE(is_child_document)
     // BEGIN_INCLUDE(create_document)
@@ -410,44 +410,23 @@ public class MyCloudProvider extends DocumentsProvider {
         if (res <0) {
             throw new FileNotFoundException(sftp_client.getLastError());
         }
+
+        //String parentId = getParent(documentId);
+        //final Uri notifyUri = toNotifyUri(DocumentMetadata.buildParentUri(uri));
+        //getContext().getContentResolver().notifyChange(notifyUri, null, false);
     }
     // END_INCLUDE(delete_document)
 
-/*
+
     // BEGIN_INCLUDE(remove_document)
     @Override
     public void removeDocument(String documentId, String parentDocumentId)
             throws FileNotFoundException {
         Log.v(TAG, "removeDocument");
-        File parent = getFileForDocId(parentDocumentId);
-        File file = getFileForDocId(documentId);
-
-        if (file == null) {
-            throw new FileNotFoundException("Failed to delete document with id " + documentId);
-        }
-
-        // removeDocument is the same as deleteDocument but allows the parent to be specified
-        // Check here if the specified parentDocumentId matches the true parent of documentId
-        boolean doesFileParentMatch = false;
-        File fileParent = file.getParentFile();
-
-        if (fileParent == null || fileParent.equals(parent)) {
-            doesFileParentMatch = true;
-        }
-
-        // Remove the file if parent matches or file and parent are equal
-        if (parent.equals(file) || doesFileParentMatch) {
-            if (file.delete()) {
-                Log.i(TAG, "Deleted file with id " + documentId);
-            } else {
-                throw new FileNotFoundException("Failed to delete document with id " + documentId);
-            }
-        } else {
-            throw new FileNotFoundException("Failed to delete document with id " + documentId);
-        }
+        deleteDocument(documentId);
     }
     // END_INCLUDE(remove_document)
-*/
+
 
     // BEGIN_INCLUDE(copyDocument)
     @Override
@@ -487,6 +466,15 @@ public class MyCloudProvider extends DocumentsProvider {
             throw new FileNotFoundException("Failed to move document " + sourceDocumentId);
         }
 
+        // sync database
+        /*
+        String parentSourceDocumentId = getParent(sourceDocumentId);
+        Uri sourceUri = DocumentsContract.buildDocumentUri(AUTHORITY, parentSourceDocumentId);
+        getContext().getContentResolver().notifyChange(sourceUri, null);
+        String parentTargetDocumentId = getParent(targetDocumentId);
+        Uri targetUri = DocumentsContract.buildDocumentUri(AUTHORITY, parentTargetDocumentId);
+        getContext().getContentResolver().notifyChange(targetUri, null);
+        */
         return targetDocumentId;
     }
     // END_INCLUDE(moveDocument)
