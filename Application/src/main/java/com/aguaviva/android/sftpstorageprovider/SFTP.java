@@ -1,11 +1,10 @@
 package com.aguaviva.android.sftpstorageprovider;
 
-import android.content.Context;
+
 import android.os.ParcelFileDescriptor;
 
 import com.example.android.common.logger.Log;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 
 public class SFTP {
@@ -24,10 +23,11 @@ public class SFTP {
 
     String root;
 
-    ProgressNotification pn;
+    interface onProgressListener {
+        boolean listen(int progress);
+    }
 
-    public SFTP(Context context) {
-        pn = new ProgressNotification(context, 1);
+    public SFTP() {
     }
 
     public boolean Init(String hostname, int port, String username, String pubKeyFilename, String privKeyFilename, String root)
@@ -80,14 +80,13 @@ public class SFTP {
         return true;
     }
 
-    public void get(String documentId, ParcelFileDescriptor writeEnd)
+    public void get(String documentId, ParcelFileDescriptor writeEnd, onProgressListener listener)
     {
         assert is_active==false;
 
         is_active = true;
 
-        pn.start_notification("Downloading " + root+documentId);
-        //Log.i(TAG, "Get: Downloading " + documentId);
+        Log.i(TAG, "Put: Downloading " + root+documentId);
 
         ParcelFileDescriptor.AutoCloseOutputStream outputStream = new ParcelFileDescriptor.AutoCloseOutputStream(writeEnd);
 
@@ -116,7 +115,9 @@ public class SFTP {
                             progress = (int) ((total_received * 100) / file_size);
                             if (last_progress != progress) {
                                 last_progress = progress;
-                                pn.update_progress(progress);
+
+                                if (listener!=null)
+                                    listener.listen(progress);
                             }
                             //Log.i(TAG, "progress " + progress);
                         } else if (length == 0) {
@@ -136,8 +137,6 @@ public class SFTP {
                 }
                 //Log.i(TAG, "done ");
 
-                pn.stop_progress();
-
                 last_active = System.currentTimeMillis();
             }
             else {
@@ -156,13 +155,12 @@ public class SFTP {
 
     }
 
-    public void put(String documentId, ParcelFileDescriptor readEnd)
+    public void put(String documentId, ParcelFileDescriptor readEnd, onProgressListener listener)
     {
         assert is_active==false;
 
         is_active = true;
 
-        pn.start_notification("Uploading " + root+documentId);
         Log.i(TAG, "Put: Uploading " + root+documentId);
 
         ParcelFileDescriptor.AutoCloseInputStream inputStream = new ParcelFileDescriptor.AutoCloseInputStream(readEnd);
@@ -206,7 +204,9 @@ public class SFTP {
                         progress = (int) ((total_sent * 100) / file_size);
                         if (last_progress != progress) {
                             last_progress = progress;
-                            pn.update_progress(progress);
+
+                            if (listener!=null)
+                                listener.listen(progress);
                         }
                         //Log.i(TAG, "progress " + progress);
                     } else if (length == 0) {
@@ -226,8 +226,6 @@ public class SFTP {
             }
             //Log.i(TAG, "done ");
 
-            pn.stop_progress();
-
             last_active = System.currentTimeMillis();
 
             if (Ssh2.closefile(sftp_handle_id) != 0) {
@@ -241,10 +239,10 @@ public class SFTP {
         is_active = false;
     }
 
-    interface Listener {
+    interface onGetFileListener {
         boolean listen(String file);
     }
-    public void ls(String path, Listener listener) throws Exception {
+    public void ls(String path, onGetFileListener listener) throws Exception {
 
         int sftp_handle_id = Ssh2.opendir(ssh2_sftp_session, root+path);
         if (sftp_handle_id>=0) {

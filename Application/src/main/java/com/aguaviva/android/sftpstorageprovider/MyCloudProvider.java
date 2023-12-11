@@ -54,7 +54,7 @@ import java.util.regex.Pattern;
 public class MyCloudProvider extends DocumentsProvider {
     private static final String TAG = "MyCloudProvider";
 
-    public static final String AUTHORITY = "com.aguaviva.android.sftpstorageprovider";
+    public static final String AUTHORITY = "com.aguaviva.android.sftpstorageprovider.documents";
 
     // Use these as the default columns to return information about a root if no specific
     // columns are requested in a query.
@@ -107,10 +107,10 @@ public class MyCloudProvider extends DocumentsProvider {
         Ssh2.init_ssh();
 
         if (sftp_client==null)
-            sftp_client = new SFTP(getContext());
+            sftp_client = new SFTP();
 
         if (sftp_client_mt==null)
-            sftp_client_mt = new SFTPMT(getContext());
+            sftp_client_mt = new SFTPMT();
 
         return true;
     }
@@ -272,7 +272,7 @@ public class MyCloudProvider extends DocumentsProvider {
             final MatrixCursor result = new MatrixCursor(resolveDocumentProjection(projection));
 
             try {
-                sftp_client.ls(fixPath(parentDocumentId), new SFTP.Listener() {
+                sftp_client.ls(fixPath(parentDocumentId), new SFTP.onGetFileListener() {
                     @Override
                     public boolean listen(String entry) {
                         if (entry.endsWith(" .") || entry.endsWith(" ..")) {
@@ -286,6 +286,9 @@ public class MyCloudProvider extends DocumentsProvider {
             } catch(Exception e) {
                 Log.e(TAG, e.getMessage());
             }
+
+            result.setNotificationUri(getContext().getContentResolver(),
+                    DocumentsContract.buildDocumentUri(AUTHORITY, parentDocumentId));
 
             Log.v(TAG, "End queryChildDocuments ");
             return result;
@@ -335,38 +338,19 @@ public class MyCloudProvider extends DocumentsProvider {
         return documentId.startsWith(parentDocumentId);
     }
     // END_INCLUDE(is_child_document)
+
     // BEGIN_INCLUDE(create_document)
     @Override
-    public String createDocument(String documentId, String mimeType, String displayName)
+    public String createDocument(String parentDocumentId, String mimeType, String displayName)
             throws FileNotFoundException {
         Log.v(TAG, "createDocument");
-/*
-        File parent = getFileForDocId(documentId);
-        File file = new File(parent.getPath(), displayName);
-        try {
-            // Create the new File to copy into
-            boolean wasNewFileCreated = false;
-            if (file.createNewFile()) {
-                if (file.setWritable(true) && file.setReadable(true)) {
-                    wasNewFileCreated = true;
-                }
-            }
 
-            if (!wasNewFileCreated) {
-                throw new FileNotFoundException("Failed to create document with name " +
-                        displayName +" and documentId " + documentId);
-            }
-        } catch (IOException e) {
-            throw new FileNotFoundException("Failed to create document with name " +
-                    displayName +" and documentId " + documentId);
-        }
-        return getDocIdForFile(file);
+        getContext().getContentResolver().notifyChange(
+                DocumentsContract.buildDocumentUri(AUTHORITY, parentDocumentId), null);
 
- */
-        return documentId + "/" + displayName;
+        return parentDocumentId + "/" + displayName;
     }
     // END_INCLUDE(create_document)
-
 
     /*
     // BEGIN_INCLUDE(rename_document)
@@ -411,9 +395,9 @@ public class MyCloudProvider extends DocumentsProvider {
             throw new FileNotFoundException(sftp_client.getLastError());
         }
 
-        //String parentId = getParent(documentId);
-        //final Uri notifyUri = toNotifyUri(DocumentMetadata.buildParentUri(uri));
-        //getContext().getContentResolver().notifyChange(notifyUri, null, false);
+        String parentId = getParent(documentId);
+        Uri notifyUri = DocumentsContract.buildDocumentUri(AUTHORITY, parentId);
+        getContext().getContentResolver().notifyChange(notifyUri, null);
     }
     // END_INCLUDE(delete_document)
 
@@ -442,6 +426,9 @@ public class MyCloudProvider extends DocumentsProvider {
             if (res <0) {
                 throw new FileNotFoundException(sftp_client.getLastError());
             }
+
+            Uri notifyUri = DocumentsContract.buildDocumentUri(AUTHORITY, targetParentDocumentId);
+            getContext().getContentResolver().notifyChange(notifyUri, null);
 
             return newDocumentID;
         }
@@ -544,7 +531,7 @@ public class MyCloudProvider extends DocumentsProvider {
         }
 
         try {
-            sftp_client.ls(fixPath(path), new SFTP.Listener() {
+            sftp_client.ls(fixPath(path), new SFTP.onGetFileListener() {
                 @Override
                 public boolean listen(String entry) {
                     if (is_directory) {

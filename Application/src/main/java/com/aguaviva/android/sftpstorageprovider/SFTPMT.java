@@ -1,6 +1,5 @@
 package com.aguaviva.android.sftpstorageprovider;
 
-import android.content.Context;
 import android.os.ParcelFileDescriptor;
 
 import com.example.android.common.logger.Log;
@@ -12,10 +11,7 @@ import java.util.concurrent.BlockingQueue;
 public class SFTPMT {
 
     private static final String TAG = "MyCloudProvider-queue";
-
-    Context context;
     private static final int NUM_THREADS = 5;
-
     private static final int TASK_PUT = 1;
     private static final int TASK_GET = 2;
 
@@ -58,9 +54,9 @@ public class SFTPMT {
                     Log.i(TAG, String.format("w %d begin %s: %s", id, op, element.documentId));
 
                     if (element.type== TASK_GET)
-                        sftp.get(element.documentId, element.parcelFileDescriptor);
+                        sftp.get(element.documentId, element.parcelFileDescriptor, null);
                     else if (element.type== TASK_PUT)
-                        sftp.put(element.documentId, element.parcelFileDescriptor);
+                        sftp.put(element.documentId, element.parcelFileDescriptor, null);
                     else
                         Log.e(TAG, String.format("w %d unknown task type  %d", id, element.type));
 
@@ -73,8 +69,7 @@ public class SFTPMT {
         }
     }
 
-    public SFTPMT(Context context) {
-        this.context = context;
+    public SFTPMT() {
     }
 
     public boolean Init(String hostname, int port, String username, String pubKeyFilename, String privKeyFilename, String root) {
@@ -86,7 +81,7 @@ public class SFTPMT {
             threads[finalI] = new Thread() {
                 @Override
                 public void run() {
-                    SFTP sftp = new SFTP(context);
+                    SFTP sftp = new SFTP();
                     sftp.Init(hostname, port, username, pubKeyFilename, privKeyFilename, root);
 
                     Thread worker = new Thread(new TaskConsumer(finalI, sftp, arrayQueue));

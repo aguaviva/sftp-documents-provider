@@ -13,12 +13,14 @@ import android.widget.ListView;
 import android.widget.Spinner;
 import android.widget.TextView;
 
+import androidx.fragment.app.FragmentActivity;
+
 import com.example.android.common.activities.SampleActivityBase;
 
 import java.io.File;
 import java.io.IOException;
 
-public class KeyManagerActivity extends SampleActivityBase {
+public class KeyManagerActivity extends FragmentActivity {
 
     ListView simpleList;
 

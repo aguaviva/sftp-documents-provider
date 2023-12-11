@@ -14,6 +14,8 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.fragment.app.FragmentActivity;
+
 import com.example.android.common.activities.SampleActivityBase;
 import com.example.android.common.logger.Log;
 
@@ -24,7 +26,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
-public class ConnectionManagerActivity extends SampleActivityBase {
+public class ConnectionManagerActivity extends FragmentActivity {
 
     public int RESULT_OK = 1;
     EditText editConnectionName;

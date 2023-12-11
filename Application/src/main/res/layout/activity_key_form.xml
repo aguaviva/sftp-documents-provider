@@ -3,8 +3,7 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:orientation="vertical"
     android:layout_width="fill_parent"
-    android:layout_height="fill_parent"
-    android:id="@+id/sample_main_layout">
+    android:layout_height="fill_parent">
 
     <TextView
         android:id="@+id/textView0"
@@ -18,14 +17,14 @@
         android:layout_height="wrap_content"
         android:ems="10"
         android:gravity="start|top"
-        android:inputType="text" />
+        android:inputType="text"
+        android:typeface="monospace" />
 
     <TextView
         android:id="@+id/textView5"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Public key"
-         />
+        android:text="Public key" />
 
     <ScrollView
         android:id="@+id/scrollView1"
@@ -35,12 +34,14 @@
         <EditText
             android:id="@+id/editTextPublicKey"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
+            android:layout_height="wrap_content"
             android:ems="10"
             android:inputType="textMultiLine"
             android:scrollHorizontally="true"
             android:gravity="top|left"
             android:text=""
+            android:typeface="monospace"
+            android:textSize="16dp"
             />
     </ScrollView>
 
@@ -59,14 +60,17 @@
         <EditText
             android:id="@+id/editTextPrivateKey"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
+            android:layout_height="wrap_content"
             android:ems="10"
             android:hint="Note:OpenSSH keys not supported"
             android:singleLine="false"
             android:gravity="top|left"
             android:inputType="textMultiLine"
             android:scrollHorizontally="true"
-            android:text="" />
+            android:text=""
+            android:typeface="monospace"
+            android:textSize="16dp"
+            />
     </ScrollView>
 
     <LinearLayout

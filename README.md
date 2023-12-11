@@ -31,9 +31,6 @@ Does support
 Help wanted! :)
 ------------
 
-- How do I notify the document client to refresh the contents of the server?
-- How do I convert documentIds into URIS? Any minimal example would be welcome
-  - Why are they needed?
 - Why PDFs cannot be read? See bug https://github.com/aguaviva/sftp-documents-provider/issues/1
 - How do I get random access to files? 
 

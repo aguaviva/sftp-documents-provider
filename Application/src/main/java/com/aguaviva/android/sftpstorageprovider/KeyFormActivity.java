@@ -6,11 +6,13 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 
+import androidx.fragment.app.FragmentActivity;
+
 import com.example.android.common.activities.SampleActivityBase;
 
 import java.io.IOException;
 
-public class KeyFormActivity extends SampleActivityBase {
+public class KeyFormActivity extends FragmentActivity {
     EditText editKeyName;
     EditText editTextPublicKey;
     EditText editTextPrivateKey;
