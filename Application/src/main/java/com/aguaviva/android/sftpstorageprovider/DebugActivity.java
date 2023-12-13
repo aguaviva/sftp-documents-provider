@@ -42,16 +42,16 @@ import com.example.android.common.logger.MessageOnlyLogFilter;
  * A simple launcher activity containing a summary sample description
  * and a few action bar buttons.
  */
-public class MainActivity extends SampleActivityBase {
+public class DebugActivity extends SampleActivityBase {
 
-    public static final String TAG = "MainActivity";
+    public static final String TAG = "DebugActivity";
 
     public static final String FRAGTAG = "StorageProviderFragment";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.activity_debug);
 
         if (getSupportFragmentManager().findFragmentByTag(FRAGTAG) == null) {
             FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
@@ -59,39 +59,6 @@ public class MainActivity extends SampleActivityBase {
             transaction.add(fragment, FRAGTAG);
             transaction.commit();
         }
-
-        helpers.Init(this);
-        rebuildConnectionsList();
-    }
-
-    private void rebuildConnectionsList() {
-        ListView simpleList = (ListView)findViewById(R.id.list_view);
-        ArrayAdapter<String> arrayAdapter= helpers.populateListView(this, "+ Add Connections", helpers.getFilesConnections() );
-        simpleList.setAdapter(arrayAdapter);
-        simpleList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> adapterView, View view, int pos, long l) {
-                if (pos==adapterView.getCount()-1)
-                {
-                    Intent myIntent = new Intent(MainActivity.this, ConnectionManagerActivity.class);
-                    myIntent.putExtra("connection_name", "");
-                    startActivityForResult(myIntent, 0);
-                }
-            }
-        });
-        simpleList.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
-            @Override
-            public boolean onItemLongClick(AdapterView<?> adapterView, View parent, int pos, long id) {
-                Intent myIntent = new Intent(MainActivity.this, ConnectionManagerActivity.class);
-                if (pos==adapterView.getCount()-1) {
-                    myIntent.putExtra("connection_name", "");
-                } else {
-                    myIntent.putExtra("connection_name", ((TextView) parent).getText().toString());
-                }
-                startActivityForResult(myIntent, 0);
-                return true;
-            }
-        });
     }
 
     @Override
@@ -100,9 +67,23 @@ public class MainActivity extends SampleActivityBase {
         return true;
     }
 
+    /** Create a chain of targets that will receive log data */
     @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        rebuildConnectionsList();
+    public void initializeLogging() {
+        // Wraps Android's native log framework.
+        LogWrapper logWrapper = new LogWrapper();
+        // Using Log, front-end to the logging chain, emulates android.util.log method signatures.
+        Log.setLogNode(logWrapper);
+
+        // Filter strips out everything except the message text.
+        MessageOnlyLogFilter msgFilter = new MessageOnlyLogFilter();
+        logWrapper.setNext(msgFilter);
+
+        // On screen logging via a fragment with a TextView.
+        LogFragment logFragment = (LogFragment) getSupportFragmentManager()
+                .findFragmentById(R.id.log_fragment);
+        msgFilter.setNext(logFragment.getLogView());
+        logFragment.getLogView().setTextAppearance(this, R.style.Log);
+        logFragment.getLogView().setBackgroundColor(Color.WHITE);
     }
 }

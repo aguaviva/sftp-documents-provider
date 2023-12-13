@@ -118,7 +118,7 @@ public class MyCloudProvider extends DocumentsProvider {
     private boolean connect_if_necessary(String connectionName)
     {
         synchronized (sftp_client_mt) {
-            if (currentConnectionName.equals(connectionName) == false) {
+            if (currentConnectionName.startsWith(connectionName) == false) {
                 String hostname, username, root, pubKeyFilename, privKeyFilename;
                 int port = -1;
                 Log.i(TAG, String.format("Connecting Begin "));
@@ -145,7 +145,7 @@ public class MyCloudProvider extends DocumentsProvider {
                 } catch (UnknownHostException e) {
                     throw new RuntimeException(e);
                 }
-
+                Log.i(TAG, String.format("Resolved %s as %s", hostname, hostip));
                 sftp_client_mt.Init(hostip, port, username, pubKeyFilename, privKeyFilename, root);
 
                 sftp_client.Init(hostip, port, username, pubKeyFilename, privKeyFilename, root);
@@ -161,11 +161,8 @@ public class MyCloudProvider extends DocumentsProvider {
     // BEGIN_INCLUDE(query_roots)
     @Override
     public Cursor queryRoots(String[] projection) throws FileNotFoundException {
-        Log.v(TAG, "queryRoots");
+        Log.v(TAG, "Begin queryRoots");
 
-        // Create a cursor with either the requested fields, or the default projection.  This
-        // cursor is returned to the Android system picker UI and used to display all roots from
-        // this provider.
         final MatrixCursor result = new MatrixCursor(resolveRootProjection(projection));
 
         // If user is not logged in, return an empty root cursor.  This removes our provider from
@@ -174,21 +171,17 @@ public class MyCloudProvider extends DocumentsProvider {
             return result;
         }
 
-        // It's possible to have multiple roots (e.g. for multiple accounts in the same app) -
-        // just add multiple cursor rows.
-        // Construct one row for a root called "MyCloud".
-
         File[] connections = helpers.getFilesConnections();
         for(int i=0;i<connections.length;i++) {
+
             final MatrixCursor.RowBuilder row = result.newRow();
-
             row.add(Root.COLUMN_ROOT_ID, ROOT);
+            row.add(Root.COLUMN_TITLE, getContext().getString(R.string.app_name));
+            row.add(Root.COLUMN_SUMMARY, connections[i].getName());
+            row.add(Root.COLUMN_DOCUMENT_ID, connections[i].getName());
+            row.add(Root.COLUMN_ICON, R.drawable.ic_launcher);
+            //row.add(Root.COLUMN_AVAILABLE_BYTES, mBaseDir.getFreeSpace());
 
-            // FLAG_SUPPORTS_CREATE means at least one directory under the root supports creating
-            // documents.  FLAG_SUPPORTS_RECENTS means your application's most recently used
-            // documents will show up in the "Recents" category.  FLAG_SUPPORTS_SEARCH allows users
-            // to search all documents the application shares. FLAG_SUPPORTS_IS_CHILD allows
-            // testing parent child relationships, available after SDK 21 (Lollipop).
             if (SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
                 row.add(Root.COLUMN_FLAGS, Root.FLAG_SUPPORTS_CREATE
                         //| Root.FLAG_SUPPORTS_RECENTS
@@ -200,22 +193,9 @@ public class MyCloudProvider extends DocumentsProvider {
                         //Root.FLAG_SUPPORTS_SEARCH |
                         Root.FLAG_SUPPORTS_IS_CHILD);
             }
-
-            // COLUMN_TITLE is the root title (e.g. what will be displayed to identify your provider).
-            row.add(Root.COLUMN_TITLE, getContext().getString(R.string.app_name));
-            row.add(Root.COLUMN_SUMMARY, connections[i].getName());
-
-            // This document id must be unique within this provider and consistent across time.  The
-            // system picker UI may save it and refer to it later.
-            row.add(Root.COLUMN_DOCUMENT_ID, connections[i].getName());
-
-            // The child MIME types are used to filter the roots and only present to the user roots
-            // that contain the desired type somewhere in their file hierarchy.
-            //row.add(Root.COLUMN_MIME_TYPES, getChildMimeTypes(mBaseDir));
-            //row.add(Root.COLUMN_AVAILABLE_BYTES, mBaseDir.getFreeSpace());
-            row.add(Root.COLUMN_ICON, R.drawable.ic_launcher);
         }
 
+        Log.v(TAG, "End queryRoots");
         return result;
     }
     // END_INCLUDE(query_roots)
@@ -240,20 +220,42 @@ public class MyCloudProvider extends DocumentsProvider {
 
         synchronized(this) {
             Log.v(TAG, "Begin queryDocument: " + documentId);
+            /*
             if (projection != null) {
                 for (String s : projection) {
                     Log.v(TAG, s);
                 }
             }
-
-            if (currentConnectionName.equals("") || currentConnectionName.startsWith(currentConnectionName)==false)
-                connect_if_necessary(documentId);
+            */
 
             MatrixCursor result = new MatrixCursor(resolveDocumentProjection(projection));
-            includeId(result, documentId);
+
+            if (currentConnectionName.equals("") || currentConnectionName.startsWith(currentConnectionName)==false) {
+
+                // if there is no connection, let's return something, connect in a thread and once there notify
+
+                Log.v(TAG, "Waiting for connection....");
+
+                final MatrixCursor.RowBuilder row = result.newRow();
+                row.add(Document.COLUMN_DOCUMENT_ID, documentId);
+                row.add(Document.COLUMN_DISPLAY_NAME, documentId);
+                row.add(Document.COLUMN_MIME_TYPE, "application/octet-stream");
+                row.add(Document.COLUMN_ICON, R.drawable.ic_launcher);
+
+                Thread thread = new Thread(){
+                    public void run(){
+                        connect_if_necessary(documentId);
+                        getContext().getContentResolver().notifyChange(
+                                DocumentsContract.buildDocumentUri(AUTHORITY, documentId), null);
+                    }
+                };
+                thread.start();
+
+            } else {
+                includeId(result, documentId);
+            }
 
             Log.v(TAG, "End queryDocument");
-
             return result;
         }
     }
@@ -270,6 +272,10 @@ public class MyCloudProvider extends DocumentsProvider {
             Log.v(TAG, " sortOrder: " + sortOrder);
 
             final MatrixCursor result = new MatrixCursor(resolveDocumentProjection(projection));
+
+            if (currentConnectionName.equals("") || currentConnectionName.startsWith(currentConnectionName)==false) {
+                connect_if_necessary(parentDocumentId);
+            }
 
             try {
                 sftp_client.ls(fixPath(parentDocumentId), new SFTP.onGetFileListener() {
@@ -510,9 +516,8 @@ public class MyCloudProvider extends DocumentsProvider {
 
         String permissions  = sftp_client.stat(fixPath(docId));
         if (permissions.startsWith("*")) {
-            Log.e(TAG, "*********************" + String.format("get_permissions: %s\n", docId));
-            Log.e(TAG, "*********************" + sftp_client.getLastError());
-            Log.e(TAG, "*********************" + permissions);
+            Log.e(TAG, String.format("get_permissions %s: %s\n", docId, permissions));
+            Log.e(TAG, "Error " + sftp_client.getLastError());
             return;
         }
 

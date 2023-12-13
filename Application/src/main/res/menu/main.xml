@@ -22,4 +22,7 @@
     <item android:id="@+id/show_keys_manager"
         app:showAsAction="withText"
         android:title="Keys management" />
+    <item android:id="@+id/show_debug_activity"
+        app:showAsAction="withText"
+        android:title="Debug log" />
 </menu>

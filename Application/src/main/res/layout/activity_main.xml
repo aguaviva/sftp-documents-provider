@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <!--
   Copyright 2013 The Android Open Source Project
 
@@ -13,6 +14,7 @@
   See the License for the specific language governing permissions and
   limitations under the License.
   -->
+
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:orientation="vertical"
@@ -32,17 +34,4 @@
         android:layout_weight="1"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
-
-    <View
-        android:layout_width="fill_parent"
-        android:layout_height="20dp"
-        android:background="@android:color/darker_gray"/>
-
-    <fragment
-        android:name="com.example.android.common.logger.LogFragment"
-        android:id="@+id/log_fragment"
-        android:layout_weight="1"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent" />
-
 </LinearLayout>

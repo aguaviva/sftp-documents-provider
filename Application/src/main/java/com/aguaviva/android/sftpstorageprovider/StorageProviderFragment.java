@@ -58,19 +58,17 @@ public class StorageProviderFragment extends Fragment {
         if (item.getItemId() == R.id.sample_action) {
             toggleLogin();
             item.setTitle(mLoggedIn ? R.string.log_out : R.string.log_in);
-
-            // BEGIN_INCLUDE(notify_change)
-            // Notify the system that the status of our roots has changed.  This will trigger
-            // a call to MyCloudProvider.queryRoots() and force a refresh of the system
-            // picker UI.  It's important to call this or stale results may persist.
-            getActivity().getContentResolver().notifyChange(DocumentsContract.buildRootsUri
-                    (AUTHORITY), null, false);
-            // END_INCLUDE(notify_change)
+            getActivity().getContentResolver().notifyChange(DocumentsContract.buildRootsUri(AUTHORITY), null, false);
         } else if (item.getItemId() == R.id.show_keys_manager) {
             Intent myIntent = new Intent(getActivity(), KeyManagerActivity.class);
             myIntent.putExtra("connection_name", "");
             startActivityForResult(myIntent, 0);
+        } else if (item.getItemId() == R.id.show_debug_activity) {
+            Intent myIntent = new Intent(getActivity(), DebugActivity.class);
+            myIntent.putExtra("connection_name", "");
+            startActivityForResult(myIntent, 0);
         }
+
         return true;
     }
 
@@ -90,8 +88,7 @@ public class StorageProviderFragment extends Fragment {
      */
     private void writeLoginValue(boolean loggedIn) {
         final SharedPreferences sharedPreferences =
-                getActivity().getSharedPreferences(getString(R.string.app_name),
-                        getActivity().MODE_PRIVATE);
+                getActivity().getSharedPreferences(getString(R.string.app_name), getActivity().MODE_PRIVATE);
         sharedPreferences.edit().putBoolean(getString(R.string.key_logged_in), loggedIn).commit();
     }
 
@@ -100,8 +97,7 @@ public class StorageProviderFragment extends Fragment {
      */
     private boolean readLoginValue() {
         final SharedPreferences sharedPreferences =
-                getActivity().getSharedPreferences(getString(R.string.app_name),
-                        getActivity().MODE_PRIVATE);
+                getActivity().getSharedPreferences(getString(R.string.app_name), getActivity().MODE_PRIVATE);
         return sharedPreferences.getBoolean(getString(R.string.key_logged_in), false);
     }
 
