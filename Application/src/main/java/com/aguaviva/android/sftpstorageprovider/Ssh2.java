@@ -34,11 +34,14 @@ public class Ssh2 {
 
     public static native int init_ssh();
     public static native void exit_ssh();
+
     public static native int session_connect(String hostname, int port);
     public static native int session_disconnect(int session_id);
+    public static native int free(int session_id);
     public static native int session_set_blocking(int session_id, int blocking);
     public static native int session_get_blocking(int session_id);
     public static native String session_last_error(int session_id);
+    public static native int session_last_errorno(int session_id);
     public static native String session_get_banner(int session_id);
     public static native byte[] get_host_key_hash(int session_id);
     public static native int session_auth(int session_id, String username, String pubkey, String privkey, String passphrase);

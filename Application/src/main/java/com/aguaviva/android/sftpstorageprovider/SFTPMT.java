@@ -72,7 +72,7 @@ public class SFTPMT {
     public SFTPMT() {
     }
 
-    public boolean Init(String hostname, int port, String username, String pubKeyFilename, String privKeyFilename, String root) {
+    public boolean Init(Connection connection) {
 
         // open connections in parallel
         Thread threads[] = new Thread[NUM_THREADS];
@@ -82,7 +82,7 @@ public class SFTPMT {
                 @Override
                 public void run() {
                     SFTP sftp = new SFTP();
-                    sftp.Init(hostname, port, username, pubKeyFilename, privKeyFilename, root);
+                    sftp.Init(connection);
 
                     Thread worker = new Thread(new TaskConsumer(finalI, sftp, arrayQueue));
                     worker.start();

@@ -60,7 +60,7 @@ public class ConnectionManagerActivity extends FragmentActivity {
         if (connectionName.equals("")==false) {
             try {
                 editConnectionName.setText(connectionName);
-                JsonToUI(helpers.loadConnection(connectionName));
+                JsonToUI(helpers.loadConnectionString(connectionName));
             } catch (JSONException e) {
                 Toast.makeText(getBaseContext(),  "Can't parse connection settings", Toast.LENGTH_LONG ).show();
                 throw new RuntimeException(e);
@@ -159,7 +159,7 @@ public class ConnectionManagerActivity extends FragmentActivity {
             @Override
             public void onClick(View view) {
                 try {
-                    helpers.saveConnection(editConnectionName.getText().toString(), UiToJson());
+                    helpers.saveConnectionString(editConnectionName.getText().toString(), UiToJson());
                     finish();
                 } catch (IOException e) {
                     Toast.makeText(getBaseContext(),  "Connection name has invalid characters", Toast.LENGTH_LONG ).show();

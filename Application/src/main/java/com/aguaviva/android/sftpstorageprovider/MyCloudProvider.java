@@ -104,6 +104,8 @@ public class MyCloudProvider extends DocumentsProvider {
     public boolean onCreate() {
         Log.v(TAG, "onCreate");
 
+        helpers.Init(getContext());
+
         Ssh2.init_ssh();
 
         if (sftp_client==null)
@@ -122,33 +124,27 @@ public class MyCloudProvider extends DocumentsProvider {
                 String hostname, username, root, pubKeyFilename, privKeyFilename;
                 int port = -1;
                 Log.i(TAG, String.format("Connecting Begin "));
-                try {
-                    String connJson = helpers.loadConnection(connectionName);
-                    JSONObject jsonObject = new JSONObject(connJson);
-                    hostname = jsonObject.get("hostname").toString();
-                    username = jsonObject.get("username").toString();
-                    port = jsonObject.getInt("port");
-                    root = jsonObject.get("root").toString();
 
-                    String keyname = jsonObject.get("keyname").toString();
-                    pubKeyFilename = getContext().getFilesDir() + helpers.GetPublicKeyPath(keyname);
-                    privKeyFilename = getContext().getFilesDir() + helpers.GetPrivateKeyPath(keyname);
+                Connection connection;
+
+                try {
+                    connection = helpers.loadConnection(connectionName);
                 } catch (JSONException e) {
                     throw new RuntimeException(e);
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
 
-                String hostip = null;
+                Log.i(TAG, String.format("Resolving %s", connection.hostname));
                 try {
-                    hostip = InetAddress.getByName(hostname).getHostAddress();
+                    connection.hostname = InetAddress.getByName(connection.hostname).getHostAddress();
                 } catch (UnknownHostException e) {
                     throw new RuntimeException(e);
                 }
-                Log.i(TAG, String.format("Resolved %s as %s", hostname, hostip));
-                sftp_client_mt.Init(hostip, port, username, pubKeyFilename, privKeyFilename, root);
+                Log.i(TAG, String.format("Resolved %s", connection.hostname));
+                sftp_client_mt.Init(connection);
 
-                sftp_client.Init(hostip, port, username, pubKeyFilename, privKeyFilename, root);
+                sftp_client.Init(connection);
 
                 Log.i(TAG, String.format("Connecting End"));
 

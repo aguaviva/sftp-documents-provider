@@ -134,17 +134,17 @@ public class helpers {
         return helpers.loadString(GetPrivateKeyPath(keyname));
     }
 
-    // conenctions
+    // connections
 
     static File[] getFilesConnections() {
         return getFiles(connectionsDir, ".+");
     }
 
-    static String loadConnection(String connectionName) throws IOException {
+    static String loadConnectionString(String connectionName) throws IOException {
         return loadString(connectionsDir + "/" + connectionName);
     }
 
-    static void saveConnection(String connectionName, String jsonData) throws IOException {
+    static void saveConnectionString(String connectionName, String jsonData) throws IOException {
         saveString(connectionsDir + "/" + connectionName, jsonData);
     }
 
@@ -152,5 +152,23 @@ public class helpers {
         String keyname = filesDir + connectionsDir + "/" + connectionName;
         File filePriv = new File(keyname);
         filePriv.delete();
+    }
+
+    static Connection loadConnection(String connectionName) throws IOException, JSONException {
+        String jsonData = loadConnectionString(connectionName);
+
+        Connection c = new Connection();
+
+        JSONObject jsonObject = new JSONObject(jsonData);
+        c.hostname = jsonObject.get("hostname").toString();
+        c.username = jsonObject.get("username").toString();
+        c.port = jsonObject.getInt("port");
+        c.root = jsonObject.get("root").toString();
+
+        String keyname = jsonObject.get("keyname").toString();
+        c.pubKeyFilename = filesDir + GetPublicKeyPath(keyname);
+        c.privKeyFilename =  filesDir + GetPrivateKeyPath(keyname);
+
+        return c;
     }
 }

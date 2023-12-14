@@ -173,7 +173,6 @@ extern "C" JNIEXPORT jint JNICALL  Java_com_aguaviva_android_sftpstorageprovider
 }
 
 extern "C" JNIEXPORT jint JNICALL  Java_com_aguaviva_android_sftpstorageprovider_Ssh2_session_1disconnect(JNIEnv * env, jclass obj, int ssh2_session_id) {
-
     Ssh2_session s;
     if (database_sessions.get(ssh2_session_id, &s)==false) {
         return -1;
@@ -198,6 +197,16 @@ extern "C" JNIEXPORT jint JNICALL  Java_com_aguaviva_android_sftpstorageprovider
 
     database_sessions.del(ssh2_session_id);
 
+    return 0;
+}
+
+extern "C" JNIEXPORT jint JNICALL  Java_com_aguaviva_android_sftpstorageprovider_Ssh2_free(JNIEnv * env, jclass obj, int ssh2_session_id) {
+    Ssh2_session s;
+    if (database_sessions.get(ssh2_session_id, &s)==false) {
+        return -1;
+    }
+
+    libssh2_free(s.m_pSession, NULL);
     return 0;
 }
 
@@ -234,7 +243,6 @@ extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_sftpstorageprovider_
 
 
 extern "C" JNIEXPORT jstring JNICALL  Java_com_aguaviva_android_sftpstorageprovider_Ssh2_session_1get_1banner(JNIEnv * env, jclass obj, int ssh2_session_id) {
-
     Ssh2_session s;
     if (database_sessions.get(ssh2_session_id, &s)==false) {
         return env->NewStringUTF("");
@@ -248,7 +256,6 @@ extern "C" JNIEXPORT jstring JNICALL  Java_com_aguaviva_android_sftpstorageprovi
     return env->NewStringUTF(pBanner);
 }
 extern "C" JNIEXPORT jbyteArray JNICALL  Java_com_aguaviva_android_sftpstorageprovider_Ssh2_get_1host_1key_1hash(JNIEnv * env, jclass obj, int session_id) {
-
     Ssh2_session s;
     if (database_sessions.get(session_id, &s)==false) {
         return env->NewByteArray(0);
@@ -265,7 +272,6 @@ extern "C" JNIEXPORT jbyteArray JNICALL  Java_com_aguaviva_android_sftpstoragepr
 }
 
 extern "C" JNIEXPORT jint JNICALL  Java_com_aguaviva_android_sftpstorageprovider_Ssh2_session_1auth(JNIEnv * env, jclass obj, int session_id, jstring jusername, jstring jpubkey, jstring jprivkey, jstring jpassphrase) {
-
     Ssh2_session s;
     if (database_sessions.get(session_id, &s)==false) {
         return -1;
@@ -297,25 +303,28 @@ extern "C" JNIEXPORT jint JNICALL  Java_com_aguaviva_android_sftpstorageprovider
 }
 
 extern "C" JNIEXPORT jstring JNICALL  Java_com_aguaviva_android_sftpstorageprovider_Ssh2_session_1last_1error(JNIEnv * env, jclass obj, int session_id) {
-
     Ssh2_session s;
     if (database_sessions.get(session_id, &s)==false) {
         return env->NewStringUTF("Unknown session");
     }
 
-    LIBSSH2_SESSION *session = s.m_pSession;
-    libssh2_socket_t sock = s.m_sock;
-
     char *pBuff;
-    libssh2_session_last_error(session, &pBuff, NULL, 0);
+    libssh2_session_last_error(s.m_pSession, &pBuff, NULL, 0);
     return env->NewStringUTF(pBuff);
+}
+
+extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_sftpstorageprovider_Ssh2_session_1last_1errorno(JNIEnv * env, jclass obj, int session_id) {
+    Ssh2_session s;
+    if (database_sessions.get(session_id, &s)==false) {
+        return -1;
+    }
+
+    return libssh2_session_last_errno(s.m_pSession);
 }
 
 extern "C"
 JNIEXPORT jint JNICALL
-Java_com_aguaviva_android_sftpstorageprovider_Ssh2_exec(JNIEnv *env, jclass clazz, jint ssh2_session_id,
-                                                   jstring jcommand) {
-
+Java_com_aguaviva_android_sftpstorageprovider_Ssh2_exec(JNIEnv *env, jclass clazz, jint ssh2_session_id, jstring jcommand) {
     Ssh2_session s;
     if (database_sessions.get(ssh2_session_id, &s)==false) {
         return -1;
@@ -340,11 +349,9 @@ Java_com_aguaviva_android_sftpstorageprovider_Ssh2_exec(JNIEnv *env, jclass claz
     }
 
     return res;
-
 }
 
 extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_sftpstorageprovider_Ssh2_receive(JNIEnv * env, jclass obj, int session_id, jstring jscppath) {
-
     Ssh2_session s;
     if (database_sessions.get(session_id, &s)==false) {
         return -1;
@@ -400,7 +407,6 @@ extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_sftpstorageprovider_
 }
 
 extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_sftpstorageprovider_Ssh2_sftp_1init(JNIEnv * env, jclass obj, int session_id) {
-
     Ssh2_session s;
     if (database_sessions.get(session_id, &s)==false) {
         return -1;
@@ -412,11 +418,9 @@ extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_sftpstorageprovider_
     LIBSSH2_SFTP * sftp_session = libssh2_sftp_init(session);
 
     return database_sftp_session.add(sftp_session);
-
 }
 
 extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_sftpstorageprovider_Ssh2_sftp_1shutdown(JNIEnv * env, jclass obj, int sftp_session_id) {
-
     LIBSSH2_SFTP *sftp_session;
     if (database_sftp_session.get(sftp_session_id, &sftp_session)==false) {
         return -1;
@@ -432,8 +436,7 @@ extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_sftpstorageprovider_
 
 extern "C"
 JNIEXPORT int JNICALL
-Java_com_aguaviva_android_sftpstorageprovider_Ssh2_rename(JNIEnv *env, jclass clazz, jint sftp_session_id,
-                                                     jstring jscppath, jstring jscppath_new) {
+Java_com_aguaviva_android_sftpstorageprovider_Ssh2_rename(JNIEnv *env, jclass clazz, jint sftp_session_id, jstring jscppath, jstring jscppath_new) {
     LIBSSH2_SFTP *sftp_session;
     if (database_sftp_session.get(sftp_session_id, &sftp_session)==false) {
         return -1;
@@ -507,24 +510,23 @@ Java_com_aguaviva_android_sftpstorageprovider_Ssh2_get_1permissions(JNIEnv *env,
 }
 
 extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_sftpstorageprovider_Ssh2_opendir(JNIEnv * env, jclass obj, int sftp_session_id, jstring jsftppath) {
-
     LIBSSH2_SFTP *sftp_session;
-    if (database_sftp_session.get(sftp_session_id, &sftp_session)==false) {
+    if (database_sftp_session.get(sftp_session_id, &sftp_session) == false) {
         return -1;
     }
 
     const char *sftppath = env->GetStringUTFChars(jsftppath, NULL);
 
     LIBSSH2_SFTP_HANDLE *sftp_handle = libssh2_sftp_opendir(sftp_session, sftppath);
-
     env->ReleaseStringUTFChars(jsftppath, sftppath);
 
-    return database_sft_handle.add(sftp_handle);
+    if (sftp_handle == NULL)
+        return -2;
 
+    return database_sft_handle.add(sftp_handle);
 }
 
 extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_sftpstorageprovider_Ssh2_closedir(JNIEnv * env, jclass obj, int sftp_handle_id) {
-
     LIBSSH2_SFTP_HANDLE *sftp_handle;
     if (database_sft_handle.get(sftp_handle_id, &sftp_handle)==false) {
         return -1;
@@ -537,7 +539,6 @@ extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_sftpstorageprovider_
 }
 
 extern "C" JNIEXPORT jstring JNICALL  Java_com_aguaviva_android_sftpstorageprovider_Ssh2_readdir(JNIEnv * env, jclass obj, int sftp_handle_id) {
-
     LIBSSH2_SFTP_HANDLE *sftp_handle;
     if (database_sft_handle.get(sftp_handle_id, &sftp_handle) == false) {
         return env->NewStringUTF("");
@@ -563,7 +564,6 @@ extern "C" JNIEXPORT jstring JNICALL  Java_com_aguaviva_android_sftpstorageprovi
 
 
 extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_sftpstorageprovider_Ssh2_openfile(JNIEnv * env, jclass obj, int sftp_session_id, jstring jsftppath, int creation_flags, int permissions_flags) {
-
     LIBSSH2_SFTP *sftp_session;
     if (database_sftp_session.get(sftp_session_id, &sftp_session)==false) {
         return -1;
@@ -592,7 +592,6 @@ extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_sftpstorageprovider_
 }
 
 extern "C" JNIEXPORT int JNICALL Java_com_aguaviva_android_sftpstorageprovider_Ssh2_readfile(JNIEnv *env, jclass clazz, jint sftp_handle_id, jbyteArray data) {
-
     LIBSSH2_SFTP_HANDLE *sftp_handle;
     if (database_sft_handle.get(sftp_handle_id, &sftp_handle) == false) {
         return 0;
@@ -609,7 +608,6 @@ extern "C" JNIEXPORT int JNICALL Java_com_aguaviva_android_sftpstorageprovider_S
 
 
 extern "C" JNIEXPORT int JNICALL Java_com_aguaviva_android_sftpstorageprovider_Ssh2_writefile(JNIEnv *env, jclass clazz, jint sftp_handle_id, jbyteArray data, int offset, int length) {
-
     LIBSSH2_SFTP_HANDLE *sftp_handle;
     if (database_sft_handle.get(sftp_handle_id, &sftp_handle) == false) {
         return 0;
