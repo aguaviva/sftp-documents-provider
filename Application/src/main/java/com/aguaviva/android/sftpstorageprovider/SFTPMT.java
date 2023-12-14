@@ -14,6 +14,8 @@ public class SFTPMT {
     private static final int NUM_THREADS = 5;
     private static final int TASK_PUT = 1;
     private static final int TASK_GET = 2;
+    private static final int TASK_EXIT = 3;
+    Thread[] threads;
 
     protected class SftpTask
     {
@@ -35,7 +37,6 @@ public class SFTPMT {
         int id = -1;
         private SFTP sftp;
         private final BlockingQueue<?> queue;
-        private volatile boolean isRunning = true;
 
         public TaskConsumer(int id, SFTP sftp, BlockingQueue<?> queue) {
             this.id = id;
@@ -49,16 +50,19 @@ public class SFTPMT {
                 try {
                     SftpTask element = (SftpTask) queue.take();
 
-                    String op = (element.type== TASK_GET)?"get":"put";
+                    String op = (element.type == TASK_GET)?"get":"put";
 
                     Log.i(TAG, String.format("w %d begin %s: %s", id, op, element.documentId));
 
-                    if (element.type== TASK_GET)
+                    if (element.type == TASK_GET) {
                         sftp.get(element.documentId, element.parcelFileDescriptor, null);
-                    else if (element.type== TASK_PUT)
+                    } else if (element.type == TASK_PUT) {
                         sftp.put(element.documentId, element.parcelFileDescriptor, null);
-                    else
+                    } else if (element.type == TASK_EXIT) {
+                        break;
+                    } else {
                         Log.e(TAG, String.format("w %d unknown task type  %d", id, element.type));
+                    }
 
                     Log.i(TAG, String.format("w %d end %s: %s", id, op, element.documentId));
 
@@ -75,13 +79,13 @@ public class SFTPMT {
     public boolean Init(Connection connection) {
 
         // open connections in parallel
-        Thread threads[] = new Thread[NUM_THREADS];
+        threads = new Thread[NUM_THREADS];
         for (int i = 0; i < NUM_THREADS; i++) {
             final int finalI = i;
             threads[finalI] = new Thread() {
                 @Override
                 public void run() {
-                    SFTP sftp = new SFTP();
+                    SFTP sftp = new SFTP_retry();
                     sftp.Init(connection);
 
                     Thread worker = new Thread(new TaskConsumer(finalI, sftp, arrayQueue));

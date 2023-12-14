@@ -82,17 +82,7 @@ public class SFTP {
 
         ParcelFileDescriptor.AutoCloseOutputStream outputStream = new ParcelFileDescriptor.AutoCloseOutputStream(writeEnd);
 
-        int sftp_handle_id = -1;
-
-        for(int i=0;i<3;i++) {
-            sftp_handle_id = Ssh2.openfile(ssh2_sftp_session, filename, Ssh2.LIBSSH2_FXF_READ, 0);
-            if (sftp_handle_id>=0)
-                break;
-
-            Shutdown();
-            Init(this.connection);
-        }
-
+        int sftp_handle_id = Ssh2.openfile(ssh2_sftp_session, filename, Ssh2.LIBSSH2_FXF_READ, 0);
         if (sftp_handle_id >= 0) {
             String permissions = Ssh2.get_permissions(ssh2_sftp_session, filename);
             String p[] = permissions.split(" ");
@@ -155,7 +145,7 @@ public class SFTP {
 
         is_active = false;
 
-        return 0;
+        return getLastErrorNum();
     }
 
     public int put(String documentId, ParcelFileDescriptor readEnd, onProgressListener listener)
@@ -180,17 +170,7 @@ public class SFTP {
             Ssh2.LIBSSH2_SFTP_S_IRGRP |
             Ssh2.LIBSSH2_SFTP_S_IROTH;
 
-        int sftp_handle_id = -1;
-
-        for(int i=0;i<3;i++) {
-            sftp_handle_id = Ssh2.openfile( ssh2_sftp_session, filename, creation_flags, permissions_flags);
-            if (sftp_handle_id>=0)
-                break;
-
-            Shutdown();
-            Init(this.connection);
-        }
-
+        int sftp_handle_id = Ssh2.openfile( ssh2_sftp_session, filename, creation_flags, permissions_flags);
         if (sftp_handle_id > 0) {
 
             long file_size = 100000;
@@ -252,7 +232,7 @@ public class SFTP {
         }
         is_active = false;
 
-        return 0;
+        return getLastErrorNum();
     }
 
     interface onGetFileListener {
@@ -262,18 +242,7 @@ public class SFTP {
 
         String pathname = connection.root + path;
 
-        int sftp_handle_id = -1;
-
-        // attempt 3 times to get open the directory
-        for(int i=0;i<3;i++) {
-            sftp_handle_id = Ssh2.opendir(ssh2_sftp_session, pathname);
-            if (sftp_handle_id>=0)
-                break;
-
-            Shutdown();
-            Init(this.connection);
-        }
-
+        int sftp_handle_id = Ssh2.opendir(ssh2_sftp_session, pathname);
         if (sftp_handle_id>=0) {
             while (true) {
                 String entry = Ssh2.readdir(sftp_handle_id);
@@ -294,17 +263,7 @@ public class SFTP {
     }
 
     public String stat(String path) {
-
-        String str = null;
-        for(int i=0;i<3;i++) {
-            str =  Ssh2.get_permissions(ssh2_sftp_session, connection.root + path);
-            if (str.charAt(0)!='*')
-                break;
-
-            Shutdown();
-            Init(this.connection);
-        }
-        return str;
+        return  Ssh2.get_permissions(ssh2_sftp_session, connection.root + path);
     }
 
     public int exec(String command) {
@@ -328,5 +287,7 @@ public class SFTP {
     public String getLastError() {
         return Ssh2.session_last_error(ssh2_session_id);
     }
-
+    public int getLastErrorNum() {
+        return Ssh2.session_last_errorno(ssh2_session_id);
+    }
 }

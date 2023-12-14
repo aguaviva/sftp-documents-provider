@@ -112,7 +112,7 @@ public class MyCloudProvider extends DocumentsProvider {
         Ssh2.init_ssh();
 
         if (sftp_client==null)
-            sftp_client = new SFTP();
+            sftp_client = new SFTP_retry();
 
         if (sftp_client_mt==null)
             sftp_client_mt = new SFTPMT();
@@ -244,8 +244,7 @@ public class MyCloudProvider extends DocumentsProvider {
                 Thread thread = new Thread(){
                     public void run(){
                         connect_if_necessary(documentId);
-                        getContext().getContentResolver().notifyChange(
-                                DocumentsContract.buildDocumentUri(AUTHORITY, documentId), null);
+                        getContext().getContentResolver().notifyChange(DocumentsContract.buildDocumentUri(AUTHORITY, documentId), null);
                     }
                 };
                 thread.start();
@@ -609,7 +608,7 @@ public class MyCloudProvider extends DocumentsProvider {
             permissions = str[0];
             dateTime = Long.parseLong(str[1]);
         }
-        
+
         int flags = 0;
         String mimeType = "application/octet-stream";
         if (permissions.startsWith("d")) {
