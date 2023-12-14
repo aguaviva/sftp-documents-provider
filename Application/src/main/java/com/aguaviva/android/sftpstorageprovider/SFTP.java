@@ -238,7 +238,7 @@ public class SFTP {
     interface onGetFileListener {
         boolean listen(String file);
     }
-    public void ls(String path, onGetFileListener listener) throws Exception {
+    public int ls(String path, onGetFileListener listener) {
 
         String pathname = connection.root + path;
 
@@ -254,12 +254,10 @@ public class SFTP {
             }
             if (Ssh2.closedir(sftp_handle_id)< 0) {
                 Log.e(TAG, "closedir " + getLastError());
-                throw new Exception(getLastError());
             }
-        } else {
-            throw new Exception(getLastError());
         }
 
+        return getLastErrorNum();
     }
 
     public String stat(String path) {
