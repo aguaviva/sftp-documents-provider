@@ -96,7 +96,7 @@ public class SFTP {
         if (sftp_handle_id >= 0) {
             String permissions = Ssh2.get_permissions(ssh2_sftp_session, filename);
             String p[] = permissions.split(" ");
-            if (p[0]!="*") {
+            if (p[0].startsWith("*") == false) {
                 long file_size = Long.parseLong(p[2]);
                 //Log.i(TAG, "Permissions " + permissions);
 
