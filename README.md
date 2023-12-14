@@ -14,6 +14,7 @@ Notes
 -----
 
 - Known issues have been filed as bugs, PR's are welcome :)
+- Remember to log in using the overflow menu
 - Auth mode only supports private/public keys
   - Your private key must begin with `-----BEGIN RSA PRIVATE KEY----- `
   - OpenSSH keys are not supported
