@@ -24,6 +24,7 @@ import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.MatrixCursor;
 import android.icu.text.SimpleDateFormat;
+import android.net.ParseException;
 import android.net.Uri;
 import android.os.Build;
 import android.os.CancellationSignal;
@@ -45,6 +46,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -89,7 +92,7 @@ public class MyCloudProvider extends DocumentsProvider {
 
     private Pattern pattern = Pattern.compile("^(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(.+)$", Pattern.CASE_INSENSITIVE);
 
-    SimpleDateFormat [] formatter = new SimpleDateFormat[]{new SimpleDateFormat("MMM d HH:mm"), new SimpleDateFormat("MMM d yyyy")};
+    SimpleDateFormat dateFormat = new SimpleDateFormat("MMM d yyyy HH:mm");
 
 
     // A file object at the root of the file hierarchy.  Depending on your implementation, the root
@@ -600,12 +603,13 @@ public class MyCloudProvider extends DocumentsProvider {
 
         // get last access time and real permissions
         long dateTime = 0;
-        if (permissions.startsWith("l") || permissions.startsWith("-") ) {
+        //if (permissions.startsWith("l"))
+        {
             String str[]  = sftp_client.stat(fixPath(docId)).split(" ");
             permissions = str[0];
             dateTime = Long.parseLong(str[1]);
         }
-
+        
         int flags = 0;
         String mimeType = "application/octet-stream";
         if (permissions.startsWith("d")) {
