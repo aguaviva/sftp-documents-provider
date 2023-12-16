@@ -297,14 +297,14 @@ public class MyCloudProvider extends DocumentsProvider {
 
             if (currentConnectionName.equals("") || currentConnectionName.startsWith(getConnectionNameFrom(parentDocumentId))==false) {
 
+                Log.v(TAG, "returning placeholder...");
                 final Bundle extra = new Bundle();
-                MatrixCursor result = new MatrixCursor(projection != null ?
-                        projection : DEFAULT_DOCUMENT_PROJECTION) {
+                MatrixCursor result = new MatrixCursor(projection != null ? projection : DEFAULT_DOCUMENT_PROJECTION) {
                     @Override
                     public Bundle getExtras() {
                         Bundle bundle = new Bundle();
                         bundle.putBoolean(DocumentsContract.EXTRA_LOADING, true);
-                        bundle.putString(DocumentsContract.EXTRA_INFO, "Loading, don't despair.");
+                        bundle.putString(DocumentsContract.EXTRA_INFO, "Connecting to server...");
                         return bundle;
                     }
                 };
@@ -317,17 +317,13 @@ public class MyCloudProvider extends DocumentsProvider {
                 };
                 thread.start();
 
-
-                //extra.putBoolean(DocumentsContract.EXTRA_LOADING, true);
-                //result.setExtras(extra);
-                //result.setNotificationUri(getContext().getContentResolver(), parentDocumentId);
                 result.setNotificationUri(getContext().getContentResolver(), DocumentsContract.buildDocumentUri(AUTHORITY, parentDocumentId));
                 Log.v(TAG, "End queryChildDocuments ");
                 return result;
+
             } else {
 
                 final MatrixCursor result = new MatrixCursor(resolveDocumentProjection(projection));
-
                 int res = sftp_client.ls(getRemotePath(parentDocumentId), new SFTP.onGetFileListener() {
                     @Override
                     public boolean listen(String entry) {
