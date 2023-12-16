@@ -1,26 +1,16 @@
 package com.aguaviva.android.sftpstorageprovider;
 
-import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
-import android.widget.EditText;
 import android.widget.ListView;
-import android.widget.Spinner;
 import android.widget.TextView;
 
 import androidx.fragment.app.FragmentActivity;
 
-import com.example.android.common.activities.SampleActivityBase;
-
-import java.io.File;
-import java.io.IOException;
-
-public class KeyManagerActivity extends FragmentActivity {
+public class ActivityListKeys extends FragmentActivity {
 
     ListView simpleList;
 
@@ -40,7 +30,7 @@ public class KeyManagerActivity extends FragmentActivity {
             public void onItemClick(AdapterView<?> adapterView, View parent, int pos, long id) {
                 if (pos==adapterView.getCount()-1)
                 {
-                    Intent myIntent = new Intent(KeyManagerActivity.this, KeyFormActivity.class);
+                    Intent myIntent = new Intent(ActivityListKeys.this, ActivityFormKey.class);
                     myIntent.putExtra("key_name", "");
                     startActivityForResult(myIntent,0);
                 } else {
@@ -52,7 +42,7 @@ public class KeyManagerActivity extends FragmentActivity {
         simpleList.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
             @Override
             public boolean onItemLongClick(AdapterView<?> adapterView, View parent, int pos, long id) {
-                Intent myIntent = new Intent(KeyManagerActivity.this, KeyFormActivity.class);
+                Intent myIntent = new Intent(ActivityListKeys.this, ActivityFormKey.class);
                 if (pos==adapterView.getCount()-1) {
                     myIntent.putExtra("key_name", "");
                 }

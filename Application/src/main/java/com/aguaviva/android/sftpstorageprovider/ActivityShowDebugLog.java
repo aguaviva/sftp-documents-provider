@@ -17,18 +17,12 @@
 package com.aguaviva.android.sftpstorageprovider;
 
 
-import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
 
 import androidx.fragment.app.FragmentTransaction;
 
 import android.view.Menu;
-import android.view.View;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
-import android.widget.ListView;
-import android.widget.TextView;
 
 import com.example.android.common.activities.SampleActivityBase;
 import com.example.android.common.logger.Log;
@@ -42,7 +36,7 @@ import com.example.android.common.logger.MessageOnlyLogFilter;
  * A simple launcher activity containing a summary sample description
  * and a few action bar buttons.
  */
-public class DebugActivity extends SampleActivityBase {
+public class ActivityShowDebugLog extends SampleActivityBase {
 
     public static final String TAG = "DebugActivity";
 

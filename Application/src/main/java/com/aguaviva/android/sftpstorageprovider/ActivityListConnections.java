@@ -18,7 +18,6 @@ package com.aguaviva.android.sftpstorageprovider;
 
 
 import android.content.Intent;
-import android.graphics.Color;
 import android.os.Bundle;
 
 import androidx.fragment.app.FragmentTransaction;
@@ -31,18 +30,13 @@ import android.widget.ListView;
 import android.widget.TextView;
 
 import com.example.android.common.activities.SampleActivityBase;
-import com.example.android.common.logger.Log;
-import com.example.android.common.logger.LogFragment;
-import com.example.android.common.logger.LogWrapper;
-import com.example.android.common.logger.MessageOnlyLogFilter;
-
 
 
 /**
  * A simple launcher activity containing a summary sample description
  * and a few action bar buttons.
  */
-public class MainActivity extends SampleActivityBase {
+public class ActivityListConnections extends SampleActivityBase {
 
     public static final String TAG = "MainActivity";
 
@@ -73,7 +67,7 @@ public class MainActivity extends SampleActivityBase {
             public void onItemClick(AdapterView<?> adapterView, View view, int pos, long l) {
                 if (pos==adapterView.getCount()-1)
                 {
-                    Intent myIntent = new Intent(MainActivity.this, ConnectionManagerActivity.class);
+                    Intent myIntent = new Intent(ActivityListConnections.this, ActivityFromConnection.class);
                     myIntent.putExtra("connection_name", "");
                     startActivityForResult(myIntent, 0);
                 }
@@ -82,7 +76,7 @@ public class MainActivity extends SampleActivityBase {
         simpleList.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
             @Override
             public boolean onItemLongClick(AdapterView<?> adapterView, View parent, int pos, long id) {
-                Intent myIntent = new Intent(MainActivity.this, ConnectionManagerActivity.class);
+                Intent myIntent = new Intent(ActivityListConnections.this, ActivityFromConnection.class);
                 if (pos==adapterView.getCount()-1) {
                     myIntent.putExtra("connection_name", "");
                 } else {

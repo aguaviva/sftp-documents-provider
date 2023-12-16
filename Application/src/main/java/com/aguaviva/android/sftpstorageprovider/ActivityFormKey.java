@@ -1,18 +1,18 @@
 package com.aguaviva.android.sftpstorageprovider;
 
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.Toast;
 
 import androidx.fragment.app.FragmentActivity;
 
-import com.example.android.common.activities.SampleActivityBase;
-
 import java.io.IOException;
 
-public class KeyFormActivity extends FragmentActivity {
+public class ActivityFormKey extends FragmentActivity {
     EditText editKeyName;
     EditText editTextPublicKey;
     EditText editTextPrivateKey;
@@ -45,10 +45,10 @@ public class KeyFormActivity extends FragmentActivity {
             public void onClick(View view) {
                 try {
                     helpers.saveKeys(editKeyName.getText().toString(), editTextPublicKey.getText().toString(), editTextPrivateKey.getText().toString());
+                    finish();
                 } catch (IOException e) {
-                    throw new RuntimeException(e);
+                    Toast.makeText(getBaseContext(),  "Key name has invalid characters", Toast.LENGTH_LONG ).show();
                 }
-                finish();
             }
         });
 
@@ -65,11 +65,19 @@ public class KeyFormActivity extends FragmentActivity {
         buttonRemove.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                helpers.deleteKeys(editKeyName.getText().toString());
-                finish();
+                new DialogYesNo().show(getBaseContext(), "Delete key?", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        switch (which){
+                            case DialogInterface.BUTTON_POSITIVE:
+                                helpers.deleteKeys(editKeyName.getText().toString());
+                                finish();
+                                break;
+                        }
+                    }
+                });
             }
         });
-
     }
 
 }

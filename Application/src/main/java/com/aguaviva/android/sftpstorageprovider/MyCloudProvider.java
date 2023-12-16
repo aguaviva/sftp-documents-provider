@@ -171,11 +171,13 @@ public class MyCloudProvider extends DocumentsProvider {
         File[] connections = helpers.getFilesConnections();
         for(int i=0;i<connections.length;i++) {
 
+            String connectionName = connections[i].getName();
+
             final MatrixCursor.RowBuilder row = result.newRow();
             row.add(Root.COLUMN_ROOT_ID, ROOT);
             row.add(Root.COLUMN_TITLE, getContext().getString(R.string.app_name));
-            row.add(Root.COLUMN_SUMMARY, connections[i].getName());
-            row.add(Root.COLUMN_DOCUMENT_ID, connections[i].getName());
+            row.add(Root.COLUMN_SUMMARY, connectionName);
+            row.add(Root.COLUMN_DOCUMENT_ID, connectionName);
             row.add(Root.COLUMN_ICON, R.drawable.ic_launcher);
             //row.add(Root.COLUMN_AVAILABLE_BYTES, mBaseDir.getFreeSpace());
 
@@ -197,7 +199,7 @@ public class MyCloudProvider extends DocumentsProvider {
     }
     // END_INCLUDE(query_roots)
 
-    private String getPath(String documentId) {
+    private String getRemotePath(String documentId) {
         int l = documentId.indexOf("/");
         if (l>=0) {
             String remotePath = documentId.substring(l);
@@ -289,7 +291,7 @@ public class MyCloudProvider extends DocumentsProvider {
             }
 
 
-            int res = sftp_client.ls(getPath(parentDocumentId), new SFTP.onGetFileListener() {
+            int res = sftp_client.ls(getRemotePath(parentDocumentId), new SFTP.onGetFileListener() {
                     @Override
                     public boolean listen(String entry) {
                         if (entry.endsWith(" .") || entry.endsWith(" ..")) {
@@ -328,10 +330,10 @@ public class MyCloudProvider extends DocumentsProvider {
 
              synchronized (this) {
                 if (mode.startsWith("r")) {
-                    sftp_client_mt.get(getPath(documentId), writeEnd);
+                    sftp_client_mt.get(getRemotePath(documentId), writeEnd);
                     return readEnd;
                 } else if (mode.startsWith("w")) {
-                    sftp_client_mt.put(getPath(documentId), readEnd);
+                    sftp_client_mt.put(getRemotePath(documentId), readEnd);
                     return writeEnd;
                 }
             }
@@ -406,7 +408,7 @@ public class MyCloudProvider extends DocumentsProvider {
     @Override
     public void deleteDocument(String documentId) throws FileNotFoundException {
         Log.v(TAG, "deleteDocument");
-        int res = sftp_client.rm(getPath(documentId));
+        int res = sftp_client.rm(getRemotePath(documentId));
         if (res <0) {
             throw new FileNotFoundException(sftp_client.getLastError());
         }
@@ -438,7 +440,7 @@ public class MyCloudProvider extends DocumentsProvider {
         if (i>0) {
             String newDocumentID = targetParentDocumentId + sourceDocumentId.substring(i);
 
-            int res = sftp_client.cp(getPath(sourceDocumentId), getPath(targetParentDocumentId));
+            int res = sftp_client.cp(getRemotePath(sourceDocumentId), getRemotePath(targetParentDocumentId));
             if (res <0) {
                 throw new FileNotFoundException(sftp_client.getLastError());
             }
@@ -463,7 +465,7 @@ public class MyCloudProvider extends DocumentsProvider {
 
         String targetDocumentId = targetParentDocumentId +  sourceDocumentId.substring(sourceParentDocumentId.length());
 
-        int res = sftp_client.rename(getPath(sourceDocumentId), getPath(targetDocumentId) );
+        int res = sftp_client.rename(getRemotePath(sourceDocumentId), getRemotePath(targetDocumentId) );
         if (res<0) {
             Log.e(TAG, "Error renaming" + String.format("%s -> %s\n", sourceDocumentId, targetDocumentId));
             throw new FileNotFoundException("Failed to move document " + sourceDocumentId);
@@ -524,7 +526,7 @@ public class MyCloudProvider extends DocumentsProvider {
     {
         String path, filename;
 
-        String permissions  = sftp_client.stat(getPath(docId));
+        String permissions  = sftp_client.stat(getRemotePath(docId));
         if (permissions.startsWith("*")) {
             Log.e(TAG, String.format("get_permissions %s: %s\n", docId, permissions));
             Log.e(TAG, "Error " + sftp_client.getLastError());
@@ -545,7 +547,7 @@ public class MyCloudProvider extends DocumentsProvider {
             filename = docId.substring(i+1);
         }
 
-        int res = sftp_client.ls(getPath(path), new SFTP.onGetFileListener() {
+        int res = sftp_client.ls(getRemotePath(path), new SFTP.onGetFileListener() {
             @Override
             public boolean listen(String entry) {
                 if (is_directory) {
@@ -614,7 +616,7 @@ public class MyCloudProvider extends DocumentsProvider {
         long dateTime = 0;
         //if (permissions.startsWith("l"))
         {
-            String str[]  = sftp_client.stat(getPath(docId)).split(" ");
+            String str[]  = sftp_client.stat(getRemotePath(docId)).split(" ");
             permissions = str[0];
             dateTime = Long.parseLong(str[1]);
         }

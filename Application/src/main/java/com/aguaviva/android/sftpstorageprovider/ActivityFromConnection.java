@@ -1,7 +1,7 @@
 package com.aguaviva.android.sftpstorageprovider;
 
+import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Base64;
 import android.view.View;
@@ -16,9 +16,6 @@ import android.widget.Toast;
 
 import androidx.fragment.app.FragmentActivity;
 
-import com.example.android.common.activities.SampleActivityBase;
-import com.example.android.common.logger.Log;
-
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -26,7 +23,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
-public class ConnectionManagerActivity extends FragmentActivity {
+public class ActivityFromConnection extends FragmentActivity {
 
     public int RESULT_OK = 1;
     EditText editConnectionName;
@@ -163,11 +160,8 @@ public class ConnectionManagerActivity extends FragmentActivity {
                     finish();
                 } catch (IOException e) {
                     Toast.makeText(getBaseContext(),  "Connection name has invalid characters", Toast.LENGTH_LONG ).show();
-                    throw new RuntimeException(e);
-
                 } catch (JSONException e) {
                     Toast.makeText(getBaseContext(),  "Connection settings have invalid characters", Toast.LENGTH_LONG ).show();
-                    throw new RuntimeException(e);
                 }
             }
         });
@@ -184,8 +178,17 @@ public class ConnectionManagerActivity extends FragmentActivity {
         buttonRemove.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                helpers.deleteConnection(editConnectionName.getText().toString());
-                finish();
+                new DialogYesNo().show(getBaseContext(), "Delete connection?", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        switch (which){
+                            case DialogInterface.BUTTON_POSITIVE:
+                                helpers.deleteConnection(editConnectionName.getText().toString());
+                                finish();
+                                break;
+                        }
+                    }
+                });
             }
         });
     }

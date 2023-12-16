@@ -60,11 +60,11 @@ public class StorageProviderFragment extends Fragment {
             item.setTitle(mLoggedIn ? R.string.log_out : R.string.log_in);
             getActivity().getContentResolver().notifyChange(DocumentsContract.buildRootsUri(AUTHORITY), null, false);
         } else if (item.getItemId() == R.id.show_keys_manager) {
-            Intent myIntent = new Intent(getActivity(), KeyManagerActivity.class);
+            Intent myIntent = new Intent(getActivity(), ActivityListKeys.class);
             myIntent.putExtra("connection_name", "");
             startActivityForResult(myIntent, 0);
         } else if (item.getItemId() == R.id.show_debug_activity) {
-            Intent myIntent = new Intent(getActivity(), DebugActivity.class);
+            Intent myIntent = new Intent(getActivity(), ActivityShowDebugLog.class);
             myIntent.putExtra("connection_name", "");
             startActivityForResult(myIntent, 0);
         }
