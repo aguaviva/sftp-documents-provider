@@ -83,8 +83,6 @@ public class MyCloudProvider extends DocumentsProvider {
     private static final int MAX_SEARCH_RESULTS = 20;
     private static final int MAX_LAST_MODIFIED = 5;
 
-    private static final String ROOT = "root";
-
     private Pattern pattern = Pattern.compile("^(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(.+)$", Pattern.CASE_INSENSITIVE);
 
     SimpleDateFormat dateFormat = new SimpleDateFormat("MMM d yyyy HH:mm");
@@ -119,7 +117,7 @@ public class MyCloudProvider extends DocumentsProvider {
     {
         synchronized (sftp_client_mt) {
 
-            String connectionName = getConnectionName(connectionId);
+            String connectionName = getConnectionNameFrom(connectionId);
 
             if (currentConnectionName.startsWith(connectionName) == false) {
                 String hostname, username, root, pubKeyFilename, privKeyFilename;
@@ -171,11 +169,19 @@ public class MyCloudProvider extends DocumentsProvider {
         File[] connections = helpers.getFilesConnections();
         for(int i=0;i<connections.length;i++) {
 
+            Connection connection = null;
             String connectionName = connections[i].getName();
+            try {
+                connection = helpers.loadConnection(connectionName);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            } catch (JSONException e) {
+                throw new RuntimeException(e);
+            }
 
             final MatrixCursor.RowBuilder row = result.newRow();
-            row.add(Root.COLUMN_ROOT_ID, ROOT);
-            row.add(Root.COLUMN_TITLE, getContext().getString(R.string.app_name));
+            row.add(Root.COLUMN_ROOT_ID, connectionName);
+            row.add(Root.COLUMN_TITLE, "SFTP Documents");
             row.add(Root.COLUMN_SUMMARY, connectionName);
             row.add(Root.COLUMN_DOCUMENT_ID, connectionName);
             row.add(Root.COLUMN_ICON, R.drawable.ic_launcher);
@@ -210,7 +216,7 @@ public class MyCloudProvider extends DocumentsProvider {
         return "";
     }
 
-    private String getConnectionName(String documentId) {
+    private String getConnectionNameFrom(String documentId) {
         int l = documentId.indexOf("/");
         if (l>=0) {
             String connectionName = documentId.substring(0, l);
@@ -244,7 +250,7 @@ public class MyCloudProvider extends DocumentsProvider {
 
             MatrixCursor result = new MatrixCursor(resolveDocumentProjection(projection));
 
-            if (currentConnectionName.equals("") || currentConnectionName.startsWith(currentConnectionName)==false) {
+            if (currentConnectionName.equals("") || currentConnectionName.startsWith(getConnectionNameFrom(documentId))==false) {
 
                 // if there is no connection, let's return something, connect in a thread and once there notify
 
@@ -253,7 +259,11 @@ public class MyCloudProvider extends DocumentsProvider {
                 final MatrixCursor.RowBuilder row = result.newRow();
                 row.add(Document.COLUMN_DOCUMENT_ID, documentId);
                 row.add(Document.COLUMN_DISPLAY_NAME, documentId);
-                row.add(Document.COLUMN_MIME_TYPE, "application/octet-stream");
+                if (getConnectionNameFrom(documentId).equals(documentId))
+                    row.add(Document.COLUMN_MIME_TYPE, Document.MIME_TYPE_DIR);
+                else
+                    row.add(Document.COLUMN_MIME_TYPE, "application/octet-stream");
+
                 row.add(Document.COLUMN_ICON, R.drawable.ic_launcher);
 
                 Thread thread = new Thread(){
@@ -286,10 +296,9 @@ public class MyCloudProvider extends DocumentsProvider {
 
             final MatrixCursor result = new MatrixCursor(resolveDocumentProjection(projection));
 
-            if (currentConnectionName.equals("") || currentConnectionName.startsWith(currentConnectionName)==false) {
+            if (currentConnectionName.equals("") || currentConnectionName.startsWith(getConnectionNameFrom(parentDocumentId))==false) {
                 connect_if_necessary(parentDocumentId);
             }
-
 
             int res = sftp_client.ls(getRemotePath(parentDocumentId), new SFTP.onGetFileListener() {
                     @Override
