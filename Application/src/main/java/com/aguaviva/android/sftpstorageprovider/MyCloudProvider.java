@@ -26,6 +26,7 @@ import android.database.MatrixCursor;
 import android.icu.text.SimpleDateFormat;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.CancellationSignal;
 import android.os.ParcelFileDescriptor;
 import android.provider.DocumentsContract;
@@ -252,7 +253,7 @@ public class MyCloudProvider extends DocumentsProvider {
 
             if (currentConnectionName.equals("") || currentConnectionName.startsWith(getConnectionNameFrom(documentId))==false) {
 
-                // if there is no connection, let's return something, connect in a thread and once there notify
+                // We cannot block, so if there is no connection, let's return something, connect in a thread and once there notify a change
 
                 Log.v(TAG, "Waiting for connection....");
 
@@ -294,13 +295,40 @@ public class MyCloudProvider extends DocumentsProvider {
             Log.v(TAG, " parentDocumentId: " + parentDocumentId);
             Log.v(TAG, " sortOrder: " + sortOrder);
 
-            final MatrixCursor result = new MatrixCursor(resolveDocumentProjection(projection));
-
             if (currentConnectionName.equals("") || currentConnectionName.startsWith(getConnectionNameFrom(parentDocumentId))==false) {
-                connect_if_necessary(parentDocumentId);
-            }
 
-            int res = sftp_client.ls(getRemotePath(parentDocumentId), new SFTP.onGetFileListener() {
+                final Bundle extra = new Bundle();
+                MatrixCursor result = new MatrixCursor(projection != null ?
+                        projection : DEFAULT_DOCUMENT_PROJECTION) {
+                    @Override
+                    public Bundle getExtras() {
+                        Bundle bundle = new Bundle();
+                        bundle.putBoolean(DocumentsContract.EXTRA_LOADING, true);
+                        bundle.putString(DocumentsContract.EXTRA_INFO, "Loading, don't despair.");
+                        return bundle;
+                    }
+                };
+
+                Thread thread = new Thread(){
+                    public void run(){
+                        connect_if_necessary(parentDocumentId);
+                        getContext().getContentResolver().notifyChange(DocumentsContract.buildDocumentUri(AUTHORITY, parentDocumentId), null);
+                    }
+                };
+                thread.start();
+
+
+                //extra.putBoolean(DocumentsContract.EXTRA_LOADING, true);
+                //result.setExtras(extra);
+                //result.setNotificationUri(getContext().getContentResolver(), parentDocumentId);
+                result.setNotificationUri(getContext().getContentResolver(), DocumentsContract.buildDocumentUri(AUTHORITY, parentDocumentId));
+                Log.v(TAG, "End queryChildDocuments ");
+                return result;
+            } else {
+
+                final MatrixCursor result = new MatrixCursor(resolveDocumentProjection(projection));
+
+                int res = sftp_client.ls(getRemotePath(parentDocumentId), new SFTP.onGetFileListener() {
                     @Override
                     public boolean listen(String entry) {
                         if (entry.endsWith(" .") || entry.endsWith(" ..")) {
@@ -311,14 +339,13 @@ public class MyCloudProvider extends DocumentsProvider {
                         return true;
                     }
                 });
-            if (res<0)
-                throw new FileNotFoundException();
+                if (res < 0)
+                    throw new FileNotFoundException();
 
-            result.setNotificationUri(getContext().getContentResolver(),
-                    DocumentsContract.buildDocumentUri(AUTHORITY, parentDocumentId));
-
-            Log.v(TAG, "End queryChildDocuments ");
-            return result;
+                result.setNotificationUri(getContext().getContentResolver(), DocumentsContract.buildDocumentUri(AUTHORITY, parentDocumentId));
+                Log.v(TAG, "End queryChildDocuments ");
+                return result;
+            }
         }
 
     }
