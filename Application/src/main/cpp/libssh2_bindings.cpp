@@ -455,7 +455,7 @@ Java_com_aguaviva_android_sftpstorageprovider_Ssh2_rename(JNIEnv *env, jclass cl
 
 extern "C"
 JNIEXPORT jstring JNICALL
-Java_com_aguaviva_android_sftpstorageprovider_Ssh2_get_1permissions(JNIEnv *env, jclass clazz,
+Java_com_aguaviva_android_sftpstorageprovider_Ssh2_sftp_1stat(JNIEnv *env, jclass clazz,
                                                                jint sftp_session_id,
                                                                jstring jsftppath ) {
     LIBSSH2_SFTP *sftp_session;

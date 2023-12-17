@@ -1,7 +1,5 @@
 package com.aguaviva.android.sftpstorageprovider;
 
-import java.nio.ByteBuffer;
-
 public class Ssh2 {
     static {
         System.loadLibrary("ssh2_bindings");
@@ -59,7 +57,7 @@ public class Ssh2 {
     public static native int readfile(int sftp_handle_id, byte[] data);
     public static native int writefile(int sftp_handle_id, byte[] data, int offset, int length);
 
-    public static native String get_permissions(int sftp_handle_id, String jscppath);
+    public static native String sftp_stat(int sftp_handle_id, String jscppath);
 
     public static native int rename(int sftp_session_id, String jscppath, String jscppath_new);
 

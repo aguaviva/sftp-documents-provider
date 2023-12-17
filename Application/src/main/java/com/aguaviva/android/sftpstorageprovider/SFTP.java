@@ -84,7 +84,7 @@ public class SFTP {
 
         int sftp_handle_id = Ssh2.openfile(ssh2_sftp_session, filename, Ssh2.LIBSSH2_FXF_READ, 0);
         if (sftp_handle_id >= 0) {
-            String permissions = Ssh2.get_permissions(ssh2_sftp_session, filename);
+            String permissions = Ssh2.sftp_stat(ssh2_sftp_session, filename);
             String p[] = permissions.split(" ");
             if (p[0].startsWith("*") == false) {
                 long file_size = Long.parseLong(p[2]);
@@ -131,7 +131,7 @@ public class SFTP {
                 last_active = System.currentTimeMillis();
             }
             else {
-                Log.e(TAG, "Ssh2.get_permissions " + filename + " " + getLastError());
+                Log.e(TAG, "Ssh2.sftp_stat " + filename + " " + getLastError());
             }
 
             if (Ssh2.closefile(sftp_handle_id) != 0) {
@@ -236,11 +236,14 @@ public class SFTP {
     }
 
     interface onGetFileListener {
+        void begin();
         boolean listen(String file);
+        void  end();
     }
     public int ls(String path, onGetFileListener listener) {
 
         String pathname = connection.root + path;
+        listener.begin();
 
         int sftp_handle_id = Ssh2.opendir(ssh2_sftp_session, pathname);
         if (sftp_handle_id>=0) {
@@ -256,12 +259,13 @@ public class SFTP {
                 Log.e(TAG, "closedir " + getLastError());
             }
         }
+        listener.end();
 
         return getLastErrorNum();
     }
 
     public String stat(String path) {
-        return  Ssh2.get_permissions(ssh2_sftp_session, connection.root + path);
+        return  Ssh2.sftp_stat(ssh2_sftp_session, connection.root + path);
     }
 
     public int exec(String command) {

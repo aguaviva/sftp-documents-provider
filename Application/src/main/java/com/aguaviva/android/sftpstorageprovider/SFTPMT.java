@@ -14,6 +14,7 @@ public class SFTPMT {
     private static final int NUM_THREADS = 5;
     private static final int TASK_PUT = 1;
     private static final int TASK_GET = 2;
+    private static final int TASK_LS = 3;
     private static final int TASK_EXIT = 3;
     Thread[] threads;
 
@@ -22,13 +23,19 @@ public class SFTPMT {
         public int type;
         public String documentId;
         public ParcelFileDescriptor parcelFileDescriptor;
-        SftpTask(int type, String documentId, ParcelFileDescriptor parcelFileDescriptor)
+
+        public Object delegate;
+
+        SftpTask(int type, String documentId, ParcelFileDescriptor parcelFileDescriptor, Object delegate)
         {
             this.type = type;
             this.documentId = documentId;
             this.parcelFileDescriptor = parcelFileDescriptor;
+            this.delegate = delegate;
         }
-    };
+    }
+
+
 
     private BlockingQueue<SftpTask> arrayQueue = new ArrayBlockingQueue<>(10);
 
@@ -58,6 +65,8 @@ public class SFTPMT {
                         sftp.get(element.documentId, element.parcelFileDescriptor, null);
                     } else if (element.type == TASK_PUT) {
                         sftp.put(element.documentId, element.parcelFileDescriptor, null);
+                    } else if (element.type == TASK_LS) {
+                        sftp.ls(element.documentId, (SFTP.onGetFileListener)element.delegate);
                     } else if (element.type == TASK_EXIT) {
                         break;
                     } else {
@@ -108,11 +117,15 @@ public class SFTPMT {
     }
 
     public void get(String documentId, ParcelFileDescriptor parcelFileDescriptor) throws InterruptedException {
-        arrayQueue.put(new SftpTask(TASK_GET, documentId, parcelFileDescriptor));
+        arrayQueue.put(new SftpTask(TASK_GET, documentId, parcelFileDescriptor, null));
     }
 
     public void put(String documentId, ParcelFileDescriptor parcelFileDescriptor) throws InterruptedException {
-        arrayQueue.put(new SftpTask(TASK_PUT, documentId, parcelFileDescriptor));
+        arrayQueue.put(new SftpTask(TASK_PUT, documentId, parcelFileDescriptor, null));
+    }
+
+    public void ls(String documentId, SFTP.onGetFileListener listener) throws InterruptedException {
+        arrayQueue.put(new SftpTask(TASK_LS, documentId, null, listener));
     }
 
 }

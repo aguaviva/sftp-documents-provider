@@ -84,11 +84,6 @@ public class MyCloudProvider extends DocumentsProvider {
     private static final int MAX_SEARCH_RESULTS = 20;
     private static final int MAX_LAST_MODIFIED = 5;
 
-    private Pattern pattern = Pattern.compile("^(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(.+)$", Pattern.CASE_INSENSITIVE);
-
-    SimpleDateFormat dateFormat = new SimpleDateFormat("MMM d yyyy HH:mm");
-
-
     // A file object at the root of the file hierarchy.  Depending on your implementation, the root
     // does not need to be an existing file system directory.  For example, a tag-based document
     // provider might return a directory containing all tags, represented as child directories.
@@ -96,6 +91,10 @@ public class MyCloudProvider extends DocumentsProvider {
     String currentConnectionName = "";
     private SFTP sftp_client = null;
     private SFTPMT sftp_client_mt = null;
+
+    private Pattern pattern = Pattern.compile("^(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(.+)$", Pattern.CASE_INSENSITIVE);
+
+    private SimpleDateFormat dateFormat = new SimpleDateFormat("MMM d yyyy HH:mm");
 
     @Override
     public boolean onCreate() {
@@ -121,7 +120,6 @@ public class MyCloudProvider extends DocumentsProvider {
             String connectionName = getConnectionNameFrom(connectionId);
 
             if (currentConnectionName.startsWith(connectionName) == false) {
-                String hostname, username, root, pubKeyFilename, privKeyFilename;
                 int port = -1;
                 Log.i(TAG, String.format("Connecting Begin "));
 
@@ -276,7 +274,9 @@ public class MyCloudProvider extends DocumentsProvider {
                 thread.start();
 
             } else {
-                includeId(result, documentId);
+                synchronized (this) {
+                    includeId(result, documentId);
+                }
             }
 
             Log.v(TAG, "End queryDocument");
@@ -313,11 +313,11 @@ public class MyCloudProvider extends DocumentsProvider {
                     public void run(){
                         connect_if_necessary(parentDocumentId);
                         getContext().getContentResolver().notifyChange(DocumentsContract.buildDocumentUri(AUTHORITY, parentDocumentId), null);
+
                     }
                 };
                 thread.start();
 
-                result.setNotificationUri(getContext().getContentResolver(), DocumentsContract.buildDocumentUri(AUTHORITY, parentDocumentId));
                 Log.v(TAG, "End queryChildDocuments ");
                 return result;
 
@@ -325,6 +325,10 @@ public class MyCloudProvider extends DocumentsProvider {
 
                 final MatrixCursor result = new MatrixCursor(resolveDocumentProjection(projection));
                 int res = sftp_client.ls(getRemotePath(parentDocumentId), new SFTP.onGetFileListener() {
+                    @Override
+                    public void begin() {}
+                    @Override
+                    public void end() {}
                     @Override
                     public boolean listen(String entry) {
                         if (entry.endsWith(" .") || entry.endsWith(" ..")) {
@@ -560,7 +564,7 @@ public class MyCloudProvider extends DocumentsProvider {
 
         String permissions  = sftp_client.stat(getRemotePath(docId));
         if (permissions.startsWith("*")) {
-            Log.e(TAG, String.format("get_permissions %s: %s\n", docId, permissions));
+            Log.e(TAG, String.format("sftp_stat %s: %s\n", docId, permissions));
             Log.e(TAG, "Error " + sftp_client.getLastError());
             return;
         }
