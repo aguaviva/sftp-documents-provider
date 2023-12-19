@@ -1,12 +1,12 @@
 package com.aguaviva.android.sftpstorageprovider;
 
 import android.app.Activity;
+import android.content.ContentResolver;
 import android.content.Context;
-import android.util.Base64;
+import android.net.Uri;
 import android.widget.ArrayAdapter;
-import android.widget.ListView;
-import android.widget.Spinner;
 
+import com.aguaviva.android.libssh2.Connection;
 import com.example.android.common.logger.Log;
 
 import org.json.JSONException;
@@ -16,9 +16,12 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileFilter;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.regex.Pattern;
 
 public class helpers {
@@ -54,6 +57,7 @@ public class helpers {
         bufferedWriter.write(data);
         bufferedWriter.close();
     }
+
 
     static public boolean createDir(String dir) {
         File keys_dir = new File(dir);
@@ -171,4 +175,6 @@ public class helpers {
 
         return c;
     }
+
+
 }

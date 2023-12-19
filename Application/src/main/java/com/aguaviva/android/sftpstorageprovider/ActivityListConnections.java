@@ -18,10 +18,12 @@ package com.aguaviva.android.sftpstorageprovider;
 
 
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 
 import androidx.fragment.app.FragmentTransaction;
 
+import android.util.Log;
 import android.view.Menu;
 import android.view.View;
 import android.widget.AdapterView;
@@ -30,6 +32,12 @@ import android.widget.ListView;
 import android.widget.TextView;
 
 import com.example.android.common.activities.SampleActivityBase;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 
 
 /**
@@ -67,7 +75,7 @@ public class ActivityListConnections extends SampleActivityBase {
             public void onItemClick(AdapterView<?> adapterView, View view, int pos, long l) {
                 if (pos==adapterView.getCount()-1)
                 {
-                    Intent myIntent = new Intent(ActivityListConnections.this, ActivityFromConnection.class);
+                    Intent myIntent = new Intent(ActivityListConnections.this, ActivityFormConnection.class);
                     myIntent.putExtra("connection_name", "");
                     startActivityForResult(myIntent, 0);
                 }
@@ -76,7 +84,7 @@ public class ActivityListConnections extends SampleActivityBase {
         simpleList.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
             @Override
             public boolean onItemLongClick(AdapterView<?> adapterView, View parent, int pos, long id) {
-                Intent myIntent = new Intent(ActivityListConnections.this, ActivityFromConnection.class);
+                Intent myIntent = new Intent(ActivityListConnections.this, ActivityFormConnection.class);
                 if (pos==adapterView.getCount()-1) {
                     myIntent.putExtra("connection_name", "");
                 } else {
@@ -86,6 +94,7 @@ public class ActivityListConnections extends SampleActivityBase {
                 return true;
             }
         });
+
     }
 
     @Override
@@ -94,9 +103,9 @@ public class ActivityListConnections extends SampleActivityBase {
         return true;
     }
 
-    @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
+    public void onActivityResult(int requestCode, int resultCode,Intent resultData) {
+        super.onActivityResult(requestCode, resultCode, resultData);
         rebuildConnectionsList();
     }
+
 }

@@ -36,7 +36,7 @@ import com.example.android.common.logger.MessageOnlyLogFilter;
  * A simple launcher activity containing a summary sample description
  * and a few action bar buttons.
  */
-public class ActivityShowDebugLog extends SampleActivityBase {
+public class ActivityLog extends SampleActivityBase {
 
     public static final String TAG = "DebugActivity";
 
@@ -45,6 +45,7 @@ public class ActivityShowDebugLog extends SampleActivityBase {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         setContentView(R.layout.activity_debug);
 
         if (getSupportFragmentManager().findFragmentByTag(FRAGTAG) == null) {
@@ -53,6 +54,9 @@ public class ActivityShowDebugLog extends SampleActivityBase {
             transaction.add(fragment, FRAGTAG);
             transaction.commit();
         }
+
+        initializeLogging();
+
     }
 
     @Override
@@ -61,8 +65,8 @@ public class ActivityShowDebugLog extends SampleActivityBase {
         return true;
     }
 
+
     /** Create a chain of targets that will receive log data */
-    @Override
     public void initializeLogging() {
         // Wraps Android's native log framework.
         LogWrapper logWrapper = new LogWrapper();

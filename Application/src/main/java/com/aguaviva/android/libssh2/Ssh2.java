@@ -1,4 +1,4 @@
-package com.aguaviva.android.sftpstorageprovider;
+package com.aguaviva.android.libssh2;
 
 public class Ssh2 {
     static {
@@ -56,7 +56,7 @@ public class Ssh2 {
     public static native int closefile(int sftp_handle_id);
     public static native int readfile(int sftp_handle_id, byte[] data);
     public static native int writefile(int sftp_handle_id, byte[] data, int offset, int length);
-
+    public static native int sftp_last_error(int sftp_handle_id);
     public static native String sftp_stat(int sftp_handle_id, String jscppath);
 
     public static native int rename(int sftp_session_id, String jscppath, String jscppath_new);

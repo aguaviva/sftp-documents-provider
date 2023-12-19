@@ -1,4 +1,4 @@
-package com.aguaviva.android.sftpstorageprovider;
+package com.aguaviva.android.libssh2;
 
 
 import android.os.ParcelFileDescriptor;
@@ -20,8 +20,18 @@ public class SFTP {
         boolean listen(int progress);
     }
 
-    public boolean Init(Connection connection) {
+    public boolean Connect(Connection connection) {
         is_active = false;
+
+        // bail out if already connected
+        if (ssh2_session_id >= 0) {
+            if ((this.connection.hostname != null) && connection.hostname.equals(this.connection.hostname)) {
+                Log.i(TAG, String.format("Already connected ", ssh2_session_id, ssh2_sftp_session));
+                return true;
+            } else {
+                Disconnect();
+            }
+        }
 
         this.connection = connection;
 
@@ -34,28 +44,25 @@ public class SFTP {
                 if(ssh2_sftp_session>=0)
                 {
                     Log.i(TAG, String.format("Transfer connected ssh2:%d sftp:%d", ssh2_session_id, ssh2_sftp_session));
+                    int blocking = Ssh2.session_get_blocking(ssh2_session_id);
+                    Ssh2.session_set_blocking(ssh2_session_id, 1);
+
+                    last_active = System.currentTimeMillis();
+                    return true;
                 }
             }
-            else {
-                Log.e(TAG, String.format("Error session_auth %s", getLastError()));
-                return false;
-            }
 
-        }
-        else {
-            Log.e(TAG, String.format("Error session_connect %s", getLastError()));
-            return false;
+            Log.e(TAG, String.format("Error session_auth %s", getLastError()));
+            Ssh2.session_disconnect(ssh2_session_id);
+            ssh2_session_id = -1;
         }
 
-        int blocking = Ssh2.session_get_blocking(ssh2_session_id);
-        Ssh2.session_set_blocking(ssh2_session_id, 1);
-
-        last_active = System.currentTimeMillis();
-        return true;
+        Log.e(TAG, String.format("Error session_connect %s", getLastError()));
+        return false;
     }
 
 
-    public boolean Shutdown() {
+    public boolean Disconnect() {
         if ((ssh2_sftp_session>=0) && (Ssh2.sftp_shutdown(ssh2_sftp_session) != 0)) {
             Log.w(TAG, "Failed sftp_shutdown " + ssh2_sftp_session + " " + getLastError());
             //return false;
@@ -82,56 +89,54 @@ public class SFTP {
 
         ParcelFileDescriptor.AutoCloseOutputStream outputStream = new ParcelFileDescriptor.AutoCloseOutputStream(writeEnd);
 
+        long file_size = -1;
+        String permissions = Ssh2.sftp_stat(ssh2_sftp_session, filename);
+        String p[] = permissions.split(" ");
+        if (p[0].startsWith("*") == false) {
+            file_size = Long.parseLong(p[2]);
+        } else {
+            Log.e(TAG, "Ssh2.sftp_stat " + filename + " " + getLastError() + " " + Ssh2.sftp_last_error(ssh2_sftp_session));
+        }
+
         int sftp_handle_id = Ssh2.openfile(ssh2_sftp_session, filename, Ssh2.LIBSSH2_FXF_READ, 0);
         if (sftp_handle_id >= 0) {
-            String permissions = Ssh2.sftp_stat(ssh2_sftp_session, filename);
-            String p[] = permissions.split(" ");
-            if (p[0].startsWith("*") == false) {
-                long file_size = Long.parseLong(p[2]);
-                //Log.i(TAG, "Permissions " + permissions);
+            //Log.i(TAG, "Permissions " + permissions);
+            long last_progress = 0;
+            int progress = 0;
+            try {
+                byte[] buffer = new byte[128 * 1024];
+                long total_received = 0;
+                while (true) {
+                    int length = Ssh2.readfile(sftp_handle_id, buffer);
+                    if (length > 0) {
+                        if (length == buffer.length)
+                            outputStream.write(buffer);
+                        else
+                            outputStream.write(buffer, 0, length);
 
-                long last_progress = 0;
-                int progress = 0;
-                try {
-                    byte[] buffer = new byte[128 * 1024];
-                    long total_received = 0;
-                    while (true) {
-                        int length = Ssh2.readfile(sftp_handle_id, buffer);
-                        if (length > 0) {
-                            if (length == buffer.length)
-                                outputStream.write(buffer);
-                            else
-                                outputStream.write(buffer, 0, length);
+                        total_received += length;
+                        progress = (int) ((total_received * 100) / file_size);
+                        if (last_progress != progress) {
+                            last_progress = progress;
 
-                            total_received += length;
-                            progress = (int) ((total_received * 100) / file_size);
-                            if (last_progress != progress) {
-                                last_progress = progress;
-
-                                if (listener!=null)
-                                    listener.listen(progress);
-                            }
-                            //Log.i(TAG, "progress " + progress);
-                        } else if (length == 0) {
-                            break;
-                        } else if (length < 0) {
-                            Log.e(TAG, String.format("Ssh2.readfile err: %d ssh2:%d sftp:%d", length, ssh2_session_id, ssh2_sftp_session));
-                            Log.e(TAG, String.format("Err: " + getLastError()));
-                            break;
+                            if (listener!=null)
+                                listener.listen(progress);
                         }
-
+                        //Log.i(TAG, "progress " + progress);
+                    } else if (length == 0) {
+                        break;
+                    } else if (length < 0) {
+                        Log.e(TAG, String.format("Ssh2.readfile err: %d ssh2:%d sftp:%d", length, ssh2_session_id, ssh2_sftp_session));
+                        Log.e(TAG, String.format("Err: " + getLastError()));
+                        break;
                     }
-                    outputStream.flush();
-                    outputStream.close();
 
-                } catch (IOException e) {
-                    Log.e(TAG, "IOException reading " + filename + " " + e.getMessage());
                 }
+                outputStream.flush();
+                outputStream.close();
 
-                last_active = System.currentTimeMillis();
-            }
-            else {
-                Log.e(TAG, "Ssh2.sftp_stat " + filename + " " + getLastError());
+            } catch (IOException e) {
+                Log.e(TAG, "IOException reading " + filename + " " + e.getMessage());
             }
 
             if (Ssh2.closefile(sftp_handle_id) != 0) {
@@ -139,12 +144,10 @@ public class SFTP {
             }
         }
         else {
-            int res = Ssh2.session_last_errorno(ssh2_sftp_session);
             Log.e(TAG, "Can't Ssh2.openfile " + filename + " " + getLastError());
         }
-
         is_active = false;
-
+        last_active = System.currentTimeMillis();
         return getLastErrorNum();
     }
 
@@ -218,32 +221,27 @@ public class SFTP {
             } catch (IOException e) {
                 Log.e(TAG, "Put: IOException writing " + filename + " " + e.getMessage());
             }
+
             //Log.i(TAG, "done ");
-
-            last_active = System.currentTimeMillis();
-
             if (Ssh2.closefile(sftp_handle_id) != 0) {
                 Log.e(TAG, "Put: closefile " + filename + " " + getLastError());
-
             }
         }
         else {
             Log.e(TAG, "Put: Can't Ssh2.openfile " + filename + " " + getLastError());
         }
         is_active = false;
+        last_active = System.currentTimeMillis();
 
         return getLastErrorNum();
     }
 
-    interface onGetFileListener {
-        void begin();
+    public interface onGetFileListener {
         boolean listen(String file);
-        void  end();
     }
     public int ls(String path, onGetFileListener listener) {
 
         String pathname = connection.root + path;
-        listener.begin();
 
         int sftp_handle_id = Ssh2.opendir(ssh2_sftp_session, pathname);
         if (sftp_handle_id>=0) {
@@ -252,14 +250,13 @@ public class SFTP {
                 if (entry.equals(""))
                     break;
 
-                if (listener.listen(entry)==false)
+                if (listener.listen(entry) == false)
                     break;
             }
             if (Ssh2.closedir(sftp_handle_id)< 0) {
                 Log.e(TAG, "closedir " + getLastError());
             }
         }
-        listener.end();
 
         return getLastErrorNum();
     }
@@ -291,5 +288,8 @@ public class SFTP {
     }
     public int getLastErrorNum() {
         return Ssh2.session_last_errorno(ssh2_session_id);
+    }
+    public int getSftpLastError() {
+        return Ssh2.sftp_last_error(ssh2_sftp_session);
     }
 }

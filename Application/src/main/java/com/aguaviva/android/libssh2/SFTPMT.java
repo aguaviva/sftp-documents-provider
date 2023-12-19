@@ -1,4 +1,4 @@
-package com.aguaviva.android.sftpstorageprovider;
+package com.aguaviva.android.libssh2;
 
 import android.os.ParcelFileDescriptor;
 
@@ -11,7 +11,6 @@ import java.util.concurrent.BlockingQueue;
 public class SFTPMT {
 
     private static final String TAG = "MyCloudProvider-queue";
-    private static final int NUM_THREADS = 5;
     private static final int TASK_PUT = 1;
     private static final int TASK_GET = 2;
     private static final int TASK_LS = 3;
@@ -23,7 +22,6 @@ public class SFTPMT {
         public int type;
         public String documentId;
         public ParcelFileDescriptor parcelFileDescriptor;
-
         public Object delegate;
 
         SftpTask(int type, String documentId, ParcelFileDescriptor parcelFileDescriptor, Object delegate)
@@ -35,10 +33,7 @@ public class SFTPMT {
         }
     }
 
-
-
     private BlockingQueue<SftpTask> arrayQueue = new ArrayBlockingQueue<>(10);
-
     private static class TaskConsumer implements Runnable {
 
         int id = -1;
@@ -82,20 +77,17 @@ public class SFTPMT {
         }
     }
 
-    public SFTPMT() {
-    }
-
-    public boolean Init(Connection connection) {
+    public boolean Init(Connection connection, int numThreads) {
 
         // open connections in parallel
-        threads = new Thread[NUM_THREADS];
-        for (int i = 0; i < NUM_THREADS; i++) {
+        threads = new Thread[numThreads];
+        for (int i = 0; i < numThreads; i++) {
             final int finalI = i;
             threads[finalI] = new Thread() {
                 @Override
                 public void run() {
                     SFTP sftp = new SFTP_retry();
-                    sftp.Init(connection);
+                    sftp.Connect(connection);
 
                     Thread worker = new Thread(new TaskConsumer(finalI, sftp, arrayQueue));
                     worker.start();

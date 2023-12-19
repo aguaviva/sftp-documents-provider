@@ -30,7 +30,7 @@
         android:theme="@style/MyAppTheme"
         tools:ignore="GoogleAppIndexingWarning">
         <activity
-            android:name=".ActivityFromConnection"
+            android:name=".ActivityFormConnection"
             android:exported="false" />
         <activity
             android:name=".ActivityListKeys"
@@ -39,7 +39,10 @@
             android:name=".ActivityFormKey"
             android:exported="false" />
         <activity
-            android:name=".ActivityShowDebugLog"
+            android:name=".ActivityLog"
+            android:exported="false" />
+        <activity
+            android:name=".ActivityTest"
             android:exported="false" />
         <activity
             android:name=".ActivityListConnections"
@@ -63,8 +66,8 @@
         picker UI.
         -->
         <provider
-            android:name="com.aguaviva.android.sftpstorageprovider.MyCloudProvider"
-            android:authorities="com.aguaviva.android.sftpstorageprovider.documents"
+            android:name=".MyCloudProvider"
+            android:authorities="${documentsAuthority}"
             android:exported="true"
             android:grantUriPermissions="true"
             android:permission="android.permission.MANAGE_DOCUMENTS">

@@ -1,4 +1,4 @@
-package com.aguaviva.android.sftpstorageprovider;
+package com.aguaviva.android.libssh2;
 
 import org.json.JSONException;
 import org.json.JSONObject;

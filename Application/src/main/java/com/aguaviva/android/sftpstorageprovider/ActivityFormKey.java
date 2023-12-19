@@ -65,7 +65,7 @@ public class ActivityFormKey extends FragmentActivity {
         buttonRemove.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                new DialogYesNo().show(getBaseContext(), "Delete key?", new DialogInterface.OnClickListener() {
+                new DialogYesNo().show(ActivityFormKey.this, "Delete key?", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         switch (which){

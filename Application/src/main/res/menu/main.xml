@@ -25,4 +25,7 @@
     <item android:id="@+id/show_debug_activity"
         app:showAsAction="withText"
         android:title="Debug log" />
+    <item android:id="@+id/show_test_activity"
+        app:showAsAction="withText"
+        android:title="Test" />
 </menu>

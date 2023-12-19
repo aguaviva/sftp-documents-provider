@@ -2,8 +2,11 @@ package com.aguaviva.android.sftpstorageprovider;
 
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
+import android.provider.DocumentsContract;
 import android.util.Base64;
+import android.util.Log;
 import android.view.View;
 import android.widget.Adapter;
 import android.widget.ArrayAdapter;
@@ -14,6 +17,8 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.aguaviva.android.libssh2.Ssh2;
+
 import androidx.fragment.app.FragmentActivity;
 
 import org.json.JSONException;
@@ -23,7 +28,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
-public class ActivityFromConnection extends FragmentActivity {
+public class ActivityFormConnection extends FragmentActivity {
 
     public int RESULT_OK = 1;
     EditText editConnectionName;
@@ -178,12 +183,14 @@ public class ActivityFromConnection extends FragmentActivity {
         buttonRemove.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                new DialogYesNo().show(getBaseContext(), "Delete connection?", new DialogInterface.OnClickListener() {
+                new DialogYesNo().show(ActivityFormConnection.this, "Delete connection?", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         switch (which){
                             case DialogInterface.BUTTON_POSITIVE:
-                                helpers.deleteConnection(editConnectionName.getText().toString());
+                                String connectionName =  editConnectionName.getText().toString();
+                                helpers.deleteConnection(connectionName);
+                                getContentResolver().notifyChange(DocumentsContract.buildDocumentUri(BuildConfig.DOCUMENTS_AUTHORITY, connectionName), null);
                                 finish();
                                 break;
                         }
@@ -192,6 +199,7 @@ public class ActivityFromConnection extends FragmentActivity {
             }
         });
     }
+
 
     private void logTerminal(String s) {
         runOnUiThread(new Runnable(){

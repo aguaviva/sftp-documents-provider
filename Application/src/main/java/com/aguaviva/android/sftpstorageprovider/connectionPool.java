@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 public class connectionPool {
+/*
     private static final int NUM_CONNECTIONS = 5;
     Map<String, Connection> connections;
     Map<String, List<SFTP>> connected;
@@ -65,4 +66,5 @@ public class connectionPool {
         // ruse a connected one from another host
         //
     }
+*/
 }

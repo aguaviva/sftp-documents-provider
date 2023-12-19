@@ -64,7 +64,11 @@ public class StorageProviderFragment extends Fragment {
             myIntent.putExtra("connection_name", "");
             startActivityForResult(myIntent, 0);
         } else if (item.getItemId() == R.id.show_debug_activity) {
-            Intent myIntent = new Intent(getActivity(), ActivityShowDebugLog.class);
+            Intent myIntent = new Intent(getActivity(), ActivityLog.class);
+            myIntent.putExtra("connection_name", "");
+            startActivityForResult(myIntent, 0);
+        } else if (item.getItemId() == R.id.show_test_activity) {
+            Intent myIntent = new Intent(getActivity(), ActivityTest.class);
             myIntent.putExtra("connection_name", "");
             startActivityForResult(myIntent, 0);
         }
