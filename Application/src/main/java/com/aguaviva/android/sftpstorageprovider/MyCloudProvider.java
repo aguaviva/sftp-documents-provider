@@ -371,8 +371,9 @@ public class MyCloudProvider extends DocumentsProvider {
                         return true;
                     }
                 });
-                if (res < 0)
+                if (res < 0) {
                     throw new FileNotFoundException();
+                }
 
                 result.setNotificationUri(getContext().getContentResolver(), DocumentsContract.buildDocumentUri(BuildConfig.DOCUMENTS_AUTHORITY, parentDocumentId));
                 Log.v(TAG, "End queryChildDocuments");

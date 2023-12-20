@@ -253,7 +253,10 @@ public class SFTP {
             if (Ssh2.closedir(sftp_handle_id)< 0) {
                 Log.e(TAG, "closedir " + getLastError());
             }
+        } else {
+            Log.e(TAG, "Put: Can't Ssh2.opendir " + path + " " + getSftpLastError() + " " + getLastError());
         }
+
 
         return getLastErrorNum();
     }

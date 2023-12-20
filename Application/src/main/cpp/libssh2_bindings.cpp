@@ -457,7 +457,7 @@ extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_libssh2_Ssh2_sftp_1i
     LIBSSH2_SFTP *sftp_session = NULL;
     {
         MyMutex m(&mutex_session);
-        LIBSSH2_SFTP *sftp_session = libssh2_sftp_init(s.m_pSession);
+        sftp_session = libssh2_sftp_init(s.m_pSession);
     }
     return database_sftp_session.add(sftp_session);
 }
