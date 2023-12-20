@@ -18,12 +18,11 @@ package com.aguaviva.android.sftpstorageprovider;
 
 
 import android.content.Intent;
-import android.net.Uri;
 import android.os.Bundle;
 
+import androidx.fragment.app.FragmentActivity;
 import androidx.fragment.app.FragmentTransaction;
 
-import android.util.Log;
 import android.view.Menu;
 import android.view.View;
 import android.widget.AdapterView;
@@ -31,20 +30,12 @@ import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
 
-import com.example.android.common.activities.SampleActivityBase;
-
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-
 
 /**
  * A simple launcher activity containing a summary sample description
  * and a few action bar buttons.
  */
-public class ActivityListConnections extends SampleActivityBase {
+public class ActivityListConnections extends FragmentActivity {
 
     public static final String TAG = "MainActivity";
 

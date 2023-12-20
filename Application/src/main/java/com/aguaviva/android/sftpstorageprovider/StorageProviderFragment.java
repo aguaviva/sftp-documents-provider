@@ -25,8 +25,7 @@ import androidx.fragment.app.Fragment;
 
 import android.view.Menu;
 import android.view.MenuItem;
-
-import com.example.android.common.logger.Log;
+import android.util.Log;
 
 /**
  * Toggles the user's login status via a login menu option, and enables/disables the cloud storage
@@ -61,10 +60,6 @@ public class StorageProviderFragment extends Fragment {
             getActivity().getContentResolver().notifyChange(DocumentsContract.buildRootsUri(AUTHORITY), null, false);
         } else if (item.getItemId() == R.id.show_keys_manager) {
             Intent myIntent = new Intent(getActivity(), ActivityListKeys.class);
-            myIntent.putExtra("connection_name", "");
-            startActivityForResult(myIntent, 0);
-        } else if (item.getItemId() == R.id.show_debug_activity) {
-            Intent myIntent = new Intent(getActivity(), ActivityLog.class);
             myIntent.putExtra("connection_name", "");
             startActivityForResult(myIntent, 0);
         } else if (item.getItemId() == R.id.show_test_activity) {

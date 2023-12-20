@@ -33,6 +33,7 @@ import android.provider.DocumentsContract;
 import android.provider.DocumentsContract.Document;
 import android.provider.DocumentsContract.Root;
 import android.provider.DocumentsProvider;
+import android.util.Log;
 import android.webkit.MimeTypeMap;
 
 import com.aguaviva.android.libssh2.Connection;
@@ -40,7 +41,7 @@ import com.aguaviva.android.libssh2.SFTP;
 import com.aguaviva.android.libssh2.SFTPMT;
 import com.aguaviva.android.libssh2.SFTP_retry;
 import com.aguaviva.android.libssh2.Ssh2;
-import com.example.android.common.logger.Log;
+//import com.example.android.common.logger.Log;
 
 import org.json.JSONException;
 
@@ -116,7 +117,7 @@ public class MyCloudProvider extends DocumentsProvider {
         return true;
     }
 
-    private boolean connect_if_necessary(String connectionId)
+    private boolean connectIfNecessary(String connectionId)
     {
         synchronized (sftp_client_mt) {
 
@@ -156,7 +157,9 @@ public class MyCloudProvider extends DocumentsProvider {
     }
 
     private boolean needsReconnect(String parentDocumentId) {
-        return (currentConnectionName.equals("") || currentConnectionName.startsWith(getConnectionNameFrom(parentDocumentId))==false);
+        synchronized (sftp_client_mt) {
+            return (currentConnectionName.equals("") || currentConnectionName.startsWith(getConnectionNameFrom(parentDocumentId)) == false);
+        }
     }
 
     // BEGIN_INCLUDE(query_roots)
@@ -217,7 +220,7 @@ public class MyCloudProvider extends DocumentsProvider {
         int l = documentId.indexOf("/");
         if (l>=0) {
             String remotePath = documentId.substring(l);
-            assert(documentId.startsWith(currentConnectionName));
+            //assert(documentId.startsWith(currentConnectionName));
             return remotePath;
         }
 
@@ -254,11 +257,12 @@ public class MyCloudProvider extends DocumentsProvider {
                 }
             }
             */
-            MatrixCursor result = new MatrixCursor(resolveDocumentProjection(projection));
+
 
             boolean isRoot = getConnectionNameFrom(documentId).equals(documentId);
             if (isRoot) {
 
+                MatrixCursor result = new MatrixCursor(resolveDocumentProjection(projection));
                 Log.v(TAG, "Is root!");
                 final MatrixCursor.RowBuilder row = result.newRow();
                 row.add(Document.COLUMN_DOCUMENT_ID, documentId);
@@ -266,22 +270,49 @@ public class MyCloudProvider extends DocumentsProvider {
                 row.add(Document.COLUMN_ICON, R.drawable.ic_launcher);
                 row.add(Document.COLUMN_MIME_TYPE, Document.MIME_TYPE_DIR);
                 row.add(Document.COLUMN_FLAGS, Document.FLAG_DIR_SUPPORTS_CREATE);
+                Log.v(TAG, "End queryDocument");
+                Log.v(TAG, "");
+                return result;
 
             } else {
 
                 if (needsReconnect(documentId)) {
 
                     // We cannot block, so if there is no connection, let's return something, connect in a thread and once there notify a change
-                    Log.v(TAG, "Waiting for connection....");
-                    connect_if_necessary(documentId);
+                    MatrixCursor result = new MatrixCursor(projection != null ? projection : DEFAULT_DOCUMENT_PROJECTION) {
+                        public String extra_info = null;
+                        @Override
+                        public Bundle getExtras() {
+                            Bundle bundle = new Bundle();
+                            bundle.putBoolean(DocumentsContract.EXTRA_LOADING, extra_info!=null);
+                            bundle.putString(DocumentsContract.EXTRA_INFO, "queryDocument: Connecting to server ...");
+                            return bundle;
+                        }
+                    };
+
+                    new Thread(){
+                        public void run() {
+                            connectIfNecessary(documentId);
+                            MyCloudProvider.this.getContext().getContentResolver().notifyChange(DocumentsContract.buildDocumentUri(BuildConfig.DOCUMENTS_AUTHORITY, documentId), null);
+                        }
+                    }.start();
+
+                    Log.v(TAG, "End queryDocument");
+                    Log.v(TAG, "");
+                    return result;
+
+                } else {
+
+                    MatrixCursor result = new MatrixCursor(resolveDocumentProjection(projection));
+                    includeId(result, documentId);
+                    result.setNotificationUri(getContext().getContentResolver(), DocumentsContract.buildDocumentUri(BuildConfig.DOCUMENTS_AUTHORITY, documentId));
+                    Log.v(TAG, "End queryDocument");
+                    Log.v(TAG, "");
+                    return result;
+
                 }
-                includeId(result, documentId);
             }
 
-            Log.v(TAG, "End queryDocument");
-            Log.v(TAG, "");
-
-            return result;
         }
     }
     // END_INCLUDE(query_document)
@@ -312,7 +343,7 @@ public class MyCloudProvider extends DocumentsProvider {
 
                 Thread thread = new Thread(){
                     public void run(){
-                        connect_if_necessary(parentDocumentId);
+                        connectIfNecessary(parentDocumentId);
 
                         MyCloudProvider.this.getContext().getContentResolver().notifyChange(DocumentsContract.buildDocumentUri(BuildConfig.DOCUMENTS_AUTHORITY, parentDocumentId), null);
                     }
@@ -343,7 +374,7 @@ public class MyCloudProvider extends DocumentsProvider {
                 if (res < 0)
                     throw new FileNotFoundException();
 
-                //result.setNotificationUri(getContext().getContentResolver(), DocumentsContract.buildDocumentUri(BuildConfig.DOCUMENTS_AUTHORITY, parentDocumentId));
+                result.setNotificationUri(getContext().getContentResolver(), DocumentsContract.buildDocumentUri(BuildConfig.DOCUMENTS_AUTHORITY, parentDocumentId));
                 Log.v(TAG, "End queryChildDocuments");
                 Log.v(TAG, "");
                 return result;
@@ -444,15 +475,15 @@ public class MyCloudProvider extends DocumentsProvider {
     // BEGIN_INCLUDE(delete_document)
     @Override
     public void deleteDocument(String documentId) throws FileNotFoundException {
-        Log.v(TAG, "deleteDocument");
+        Log.v(TAG, "deleteDocument " + documentId);
         int res = sftp_client.rm(getRemotePath(documentId));
         if (res <0) {
             throw new FileNotFoundException(sftp_client.getLastError());
         }
 
         String parentId = getParent(documentId);
-        Uri notifyUri = DocumentsContract.buildDocumentUri(BuildConfig.DOCUMENTS_AUTHORITY, parentId);
-        getContext().getContentResolver().notifyChange(notifyUri, null);
+        //Uri notifyUri = DocumentsContract.buildDocumentUri(BuildConfig.DOCUMENTS_AUTHORITY, parentId);
+        //getContext().getContentResolver().notifyChange(notifyUri, null);
     }
     // END_INCLUDE(delete_document)
 
@@ -461,8 +492,11 @@ public class MyCloudProvider extends DocumentsProvider {
     @Override
     public void removeDocument(String documentId, String parentDocumentId)
             throws FileNotFoundException {
-        Log.v(TAG, "removeDocument");
+        Log.v(TAG, "removeDocument " + documentId + " " + parentDocumentId);
         deleteDocument(documentId);
+
+        getContext().getContentResolver().notifyChange(
+                DocumentsContract.buildDocumentUri(BuildConfig.DOCUMENTS_AUTHORITY, parentDocumentId), null);
     }
     // END_INCLUDE(remove_document)
 

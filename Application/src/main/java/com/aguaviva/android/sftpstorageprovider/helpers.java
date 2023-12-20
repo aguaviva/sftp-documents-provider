@@ -4,10 +4,10 @@ import android.app.Activity;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.net.Uri;
+import android.util.Log;
 import android.widget.ArrayAdapter;
 
 import com.aguaviva.android.libssh2.Connection;
-import com.example.android.common.logger.Log;
 
 import org.json.JSONException;
 import org.json.JSONObject;

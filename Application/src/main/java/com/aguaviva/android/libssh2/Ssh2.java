@@ -60,7 +60,6 @@ public class Ssh2 {
     public static native String sftp_stat(int sftp_handle_id, String jscppath);
 
     public static native int rename(int sftp_session_id, String jscppath, String jscppath_new);
-
     public static native int exec(int sftp_session_id, String jcommand);
 
 }

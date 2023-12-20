@@ -8,21 +8,22 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
-import android.widget.BaseAdapter;
+import android.widget.Button;
 import android.widget.ListView;
 import android.widget.TextView;
-
-import com.example.android.common.activities.SampleActivityBase;
-
+import android.widget.ArrayAdapter;
+import android.widget.BaseAdapter;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import android.util.Log;
 
-public class ActivityTest  extends SampleActivityBase {
+import androidx.fragment.app.FragmentActivity;
+
+public class ActivityTest  extends FragmentActivity {
     private static final int OPEN_DIRECTORY_REQUEST_CODE = 1;
     private static final int num_downloads = 10;
 
@@ -114,11 +115,16 @@ public class ActivityTest  extends SampleActivityBase {
         arrayAdapter = new CustomListAdapter(this, list);
         simpleList.setAdapter(arrayAdapter);
 
-
-        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-        intent.addCategory(Intent.CATEGORY_OPENABLE);
-        intent.setType("*/*");
-        startActivityForResult(Intent.createChooser(intent, "cacas"), OPEN_DIRECTORY_REQUEST_CODE);
+        Button buttonFilePicker = (Button) findViewById(R.id.file_picker_button);
+        buttonFilePicker.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                intent.addCategory(Intent.CATEGORY_OPENABLE);
+                intent.setType("*/*");
+                startActivityForResult(Intent.createChooser(intent, "Pick a file"), OPEN_DIRECTORY_REQUEST_CODE);
+            }
+        });
 
         //Uri uri = Uri.parse("content://com.aguaviva.android.sftpstorageprovider.documents/document/xchip%2FDocuments%2FIMG_20231208_184425_hdr.jpg");
         //LoadUri(uri);
@@ -166,24 +172,75 @@ public class ActivityTest  extends SampleActivityBase {
                 filePath = certCacheDir.getAbsolutePath() + "/" + filename;
                 selectedFileOutPutStream = new FileOutputStream(filePath);
                 byte[] buffer = new byte[64*1024];
-                int total = 0;
+                int readBytes = 0;
                 int length;
+
+                long time_start = 0;
+                long time_prev = time_start;
+                long sizeInLapse = 0;
                 while ((length = selectedFileInputStream.read(buffer)) > 0) {
-                    total += length;
+
+                    sizeInLapse += length;
+                    readBytes += length;
+
                     selectedFileOutPutStream.write(buffer, 0, length);
 
-                    int finalTotal = total;
+                    if (time_start == 0) {
+                        time_start = System.currentTimeMillis();
+                        time_prev = time_start;
+
+                    } else {
+
+                        long time_curr = System.currentTimeMillis();
+                        long delta_time = time_curr - time_prev;
+                        if (delta_time > 500 && delta_time > 0) {
+                            time_prev = time_curr;
+                            float bytesPerSecond = (float) sizeInLapse / ((float) delta_time / 1000.0f);
+                            sizeInLapse = 0;
+                            float finalTotal = readBytes;
+                            float time_total = (time_curr - time_start) / 1000.0f;
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    Item item = (Item) arrayAdapter.getItem(index);
+                                    item.itemName = String.format("%2d)  %4.0f KB/s  %10.0f KB", index, bytesPerSecond / 1024, finalTotal / 1024);
+                                    item.itemDescription = String.format("  time %4.2f s", time_total);
+
+                                    //update view
+                                    int visiblePosition = simpleList.getFirstVisiblePosition();
+                                    View view = simpleList.getChildAt(index - visiblePosition);
+                                    arrayAdapter.getView(index, view, simpleList);
+                                }
+                            });
+                        }
+                    }
+                }
+
+                selectedFileOutPutStream.flush();
+                selectedFileOutPutStream.close();
+
+                {
+                    float time_total = (System.currentTimeMillis() - time_start) / 1000.0f;
+                    float bytesPerSecond = (float) readBytes / time_total;
+                    int finalReadBytes = readBytes;
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
-                            Item item = (Item)arrayAdapter.getItem(index);
-                            item.itemName = String.valueOf(index) + "  " + String.valueOf(finalTotal);
-                            arrayAdapter.notifyDataSetChanged();
+                            Item item = (Item) arrayAdapter.getItem(index);
+                            item.itemName = String.format("%2d)  %4.0f KB/s  %10d KB DONE", index, bytesPerSecond / 1024.0f, finalReadBytes / 1024);
+                            item.itemDescription = String.format("  time %4.2f s", time_total);
+
+                            //update view
+                            int visiblePosition = simpleList.getFirstVisiblePosition();
+                            View view = simpleList.getChildAt(index - visiblePosition);
+                            arrayAdapter.getView(index, view, simpleList);
                         }
-                    });                }
+                    });
+                }
+                //delete file
+                File f = new File(filePath);
+                f.delete();
             }
-            selectedFileOutPutStream.flush();
-            selectedFileOutPutStream.close();
         }
         selectedFileInputStream.close();
         return null;

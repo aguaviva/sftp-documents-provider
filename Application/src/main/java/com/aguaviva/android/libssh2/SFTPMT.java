@@ -1,8 +1,7 @@
 package com.aguaviva.android.libssh2;
 
 import android.os.ParcelFileDescriptor;
-
-import com.example.android.common.logger.Log;
+import android.util.Log;
 
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;

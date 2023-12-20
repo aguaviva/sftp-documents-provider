@@ -27,8 +27,20 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:longClickable="true"
-        android:text="Connections:" />
+        android:text="Pick a file, it will be downloaded 10 times" />
 
+    <Button
+        android:id="@+id/file_picker_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="file picker" />
+
+    <TextView
+        android:id="@+id/textView2"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:longClickable="true"
+        android:text="Progress" />
     <ListView
         android:id="@+id/download_list_view"
         android:layout_weight="1"

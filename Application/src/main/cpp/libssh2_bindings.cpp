@@ -41,7 +41,22 @@
 #include <android/log.h>
 #include <map>
 
+
 ////////////////////////////////////////////////////////////////////
+
+class MyMutex {
+    pthread_mutex_t *pMutex;
+public:
+    MyMutex(pthread_mutex_t *_pMutex) {
+        pMutex = _pMutex;
+        pthread_mutex_lock(pMutex);
+    }
+    ~MyMutex() {
+        pthread_mutex_unlock(pMutex);
+    }
+};
+
+
 template <typename T> class Database {
     std::map<int, T> database;
     uint32_t last_id = 0;
@@ -101,6 +116,9 @@ Database<Ssh2_session> database_sessions(1);
 Database<LIBSSH2_SFTP *> database_sftp_session(1000);
 Database<LIBSSH2_SFTP_HANDLE *> database_sft_handle(2000);
 
+pthread_mutex_t mutex_session;
+
+
 extern "C" JNIEXPORT jint JNICALL  Java_com_aguaviva_android_libssh2_Ssh2_init_1ssh(JNIEnv * env, jclass obj) {
     int rc = libssh2_init(0);
     if (rc) {
@@ -156,7 +174,10 @@ extern "C" JNIEXPORT jint JNICALL  Java_com_aguaviva_android_libssh2_Ssh2_sessio
     env->ReleaseStringUTFChars(jhostname, hostname);
 
     /* Create a session instance */
-    session = libssh2_session_init();
+    {
+        MyMutex m(&mutex_session);
+        session = libssh2_session_init();
+    }
     if (!session) {
         fprintf(stderr, "Could not initialize SSH session.\n");
         return -4;
@@ -193,6 +214,7 @@ extern "C" JNIEXPORT jint JNICALL  Java_com_aguaviva_android_libssh2_Ssh2_sessio
     libssh2_socket_t sock = s.m_sock;
 
     if(session) {
+        MyMutex m(&mutex_session);
         libssh2_session_disconnect(session, "Normal Shutdown");
         libssh2_session_free(session);
     }
@@ -216,8 +238,10 @@ extern "C" JNIEXPORT jint JNICALL  Java_com_aguaviva_android_libssh2_Ssh2_free(J
     if (database_sessions.get(ssh2_session_id, &s)==false) {
         return -1;
     }
-
-    libssh2_free(s.m_pSession, NULL);
+    {
+        MyMutex m(&mutex_session);
+        libssh2_free(s.m_pSession, NULL);
+    }
     return 0;
 }
 
@@ -227,11 +251,9 @@ extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_libssh2_Ssh2_session
         return -1;
     }
 
-    LIBSSH2_SESSION *session = s.m_pSession;
-    libssh2_socket_t sock = s.m_sock;
-
-    if(session) {
-        libssh2_session_set_blocking(session, blocking);
+    {
+        MyMutex m(&mutex_session);
+        libssh2_session_set_blocking(s.m_pSession, blocking);
         return 0;
     }
     return -2;
@@ -243,15 +265,12 @@ extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_libssh2_Ssh2_session
         return -1;
     }
 
-    LIBSSH2_SESSION *session = s.m_pSession;
-    libssh2_socket_t sock = s.m_sock;
-
-    if(session) {
-        return libssh2_session_get_blocking(session);
+    {
+        MyMutex m(&mutex_session);
+        return libssh2_session_get_blocking(s.m_pSession);
     }
     return -2;
 }
-
 
 extern "C" JNIEXPORT jstring JNICALL  Java_com_aguaviva_android_libssh2_Ssh2_session_1get_1banner(JNIEnv * env, jclass obj, int ssh2_session_id) {
     Ssh2_session s;
@@ -259,13 +278,11 @@ extern "C" JNIEXPORT jstring JNICALL  Java_com_aguaviva_android_libssh2_Ssh2_ses
         return env->NewStringUTF("");
     }
 
-    LIBSSH2_SESSION *session = s.m_pSession;
-    libssh2_socket_t sock = s.m_sock;
-
-    const char *pBanner = libssh2_session_banner_get(session);
+    const char *pBanner = libssh2_session_banner_get(s.m_pSession);
     //LOGE("%s", pBanner);
     return env->NewStringUTF(pBanner);
 }
+
 extern "C" JNIEXPORT jbyteArray JNICALL  Java_com_aguaviva_android_libssh2_Ssh2_get_1host_1key_1hash(JNIEnv * env, jclass obj, int session_id) {
     Ssh2_session s;
     if (database_sessions.get(session_id, &s)==false) {
@@ -314,6 +331,7 @@ extern "C" JNIEXPORT jint JNICALL  Java_com_aguaviva_android_libssh2_Ssh2_sessio
 }
 
 extern "C" JNIEXPORT jstring JNICALL  Java_com_aguaviva_android_libssh2_Ssh2_session_1last_1error(JNIEnv * env, jclass obj, int session_id) {
+
     Ssh2_session s;
     if (database_sessions.get(session_id, &s)==false) {
         return env->NewStringUTF("Unknown session");
@@ -325,6 +343,7 @@ extern "C" JNIEXPORT jstring JNICALL  Java_com_aguaviva_android_libssh2_Ssh2_ses
 }
 
 extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_libssh2_Ssh2_session_1last_1errorno(JNIEnv * env, jclass obj, int session_id) {
+
     Ssh2_session s;
     if (database_sessions.get(session_id, &s)==false) {
         return -1;
@@ -336,13 +355,19 @@ extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_libssh2_Ssh2_session
 extern "C"
 JNIEXPORT jint JNICALL
 Java_com_aguaviva_android_libssh2_Ssh2_exec(JNIEnv *env, jclass clazz, jint ssh2_session_id, jstring jcommand) {
+
+
     Ssh2_session s;
-    if (database_sessions.get(ssh2_session_id, &s)==false) {
+    if (database_sessions.get(ssh2_session_id, &s) == false) {
         return -1;
     }
 
-    int res=0;
-    LIBSSH2_CHANNEL  *channel = libssh2_channel_open_session(s.m_pSession);
+    int res = 0;
+    LIBSSH2_CHANNEL *channel = NULL;
+    {
+        MyMutex m(&mutex_session);
+        channel = libssh2_channel_open_session(s.m_pSession);
+    }
     if(channel) {
         const char *command = env->GetStringUTFChars(jcommand, NULL);
 
@@ -352,7 +377,10 @@ Java_com_aguaviva_android_libssh2_Ssh2_exec(JNIEnv *env, jclass clazz, jint ssh2
         if(res) {
             LOGE("Unable to request command on channel");
         }
-
+        {
+            MyMutex m(&mutex_session);
+            libssh2_channel_close(channel);
+        }
     }
     else
     {
@@ -363,6 +391,7 @@ Java_com_aguaviva_android_libssh2_Ssh2_exec(JNIEnv *env, jclass clazz, jint ssh2
 }
 
 extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_libssh2_Ssh2_receive(JNIEnv * env, jclass obj, int session_id, jstring jscppath) {
+
     Ssh2_session s;
     if (database_sessions.get(session_id, &s)==false) {
         return -1;
@@ -419,26 +448,31 @@ extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_libssh2_Ssh2_receive
 
 
 extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_libssh2_Ssh2_sftp_1init(JNIEnv * env, jclass obj, int session_id) {
+
     Ssh2_session s;
     if (database_sessions.get(session_id, &s)==false) {
         return -1;
     }
 
-    LIBSSH2_SESSION *session = s.m_pSession;
-    libssh2_socket_t sock = s.m_sock;
-
-    LIBSSH2_SFTP * sftp_session = libssh2_sftp_init(session);
-
+    LIBSSH2_SFTP *sftp_session = NULL;
+    {
+        MyMutex m(&mutex_session);
+        LIBSSH2_SFTP *sftp_session = libssh2_sftp_init(s.m_pSession);
+    }
     return database_sftp_session.add(sftp_session);
 }
 
 extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_libssh2_Ssh2_sftp_1shutdown(JNIEnv * env, jclass obj, int sftp_session_id) {
+
     LIBSSH2_SFTP *sftp_session;
     if (database_sftp_session.get(sftp_session_id, &sftp_session)==false) {
         return -1;
     }
 
-    libssh2_sftp_shutdown(sftp_session);
+    {
+        MyMutex m(&mutex_session);
+        libssh2_sftp_shutdown(sftp_session);
+    }
 
     database_sftp_session.del(sftp_session_id);
     return 0;
@@ -446,19 +480,22 @@ extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_libssh2_Ssh2_sftp_1s
 
 extern "C"
 JNIEXPORT jint JNICALL
-Java_com_aguaviva_android_libssh2_Ssh2_sftp_1last_1error(JNIEnv *env, jclass clazz,
-                                                                     jint sftp_session_id) {
+Java_com_aguaviva_android_libssh2_Ssh2_sftp_1last_1error(JNIEnv *env, jclass clazz, jint sftp_session_id) {
     LIBSSH2_SFTP *sftp_session;
     if (database_sftp_session.get(sftp_session_id, &sftp_session)==false) {
         return -1;
     }
 
-    return  libssh2_sftp_last_error(sftp_session);
+    {
+        MyMutex m(&mutex_session);
+        return libssh2_sftp_last_error(sftp_session);
+    }
 }
 
 extern "C"
 JNIEXPORT int JNICALL
 Java_com_aguaviva_android_libssh2_Ssh2_rename(JNIEnv *env, jclass clazz, jint sftp_session_id, jstring jscppath, jstring jscppath_new) {
+
     LIBSSH2_SFTP *sftp_session;
     if (database_sftp_session.get(sftp_session_id, &sftp_session)==false) {
         return -1;
@@ -488,7 +525,11 @@ Java_com_aguaviva_android_libssh2_Ssh2_sftp_1stat(JNIEnv *env, jclass clazz,
     const char *sftppath = env->GetStringUTFChars(jsftppath, NULL);
 
     LIBSSH2_SFTP_ATTRIBUTES attrs;
-    int res = libssh2_sftp_stat(sftp_session, sftppath, &attrs);
+    int res = -1;
+    {
+        MyMutex m(&mutex_session);
+        res = libssh2_sftp_stat(sftp_session, sftppath, &attrs);
+    }
     if (res<0) {
         return env->NewStringUTF("* libssh2_sftp_stat err");
     }
@@ -533,6 +574,7 @@ Java_com_aguaviva_android_libssh2_Ssh2_sftp_1stat(JNIEnv *env, jclass clazz,
 
 
 extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_libssh2_Ssh2_opendir(JNIEnv * env, jclass obj, int sftp_session_id, jstring jsftppath) {
+
     LIBSSH2_SFTP *sftp_session;
     if (database_sftp_session.get(sftp_session_id, &sftp_session) == false) {
         return -1;
@@ -540,7 +582,12 @@ extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_libssh2_Ssh2_opendir
 
     const char *sftppath = env->GetStringUTFChars(jsftppath, NULL);
 
-    LIBSSH2_SFTP_HANDLE *sftp_handle = libssh2_sftp_opendir(sftp_session, sftppath);
+    LIBSSH2_SFTP_HANDLE *sftp_handle = NULL;
+    {
+        MyMutex m(&mutex_session);
+        sftp_handle = libssh2_sftp_opendir(sftp_session, sftppath);
+    }
+
     env->ReleaseStringUTFChars(jsftppath, sftppath);
 
     if (sftp_handle == NULL)
@@ -550,12 +597,16 @@ extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_libssh2_Ssh2_opendir
 }
 
 extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_libssh2_Ssh2_closedir(JNIEnv * env, jclass obj, int sftp_handle_id) {
+
     LIBSSH2_SFTP_HANDLE *sftp_handle;
     if (database_sft_handle.get(sftp_handle_id, &sftp_handle)==false) {
         return -1;
     }
 
-    libssh2_sftp_closedir(sftp_handle);
+    {
+        MyMutex m(&mutex_session);
+        libssh2_sftp_closedir(sftp_handle);
+    }
 
     database_sft_handle.del(sftp_handle_id);
     return 0;
@@ -587,6 +638,7 @@ extern "C" JNIEXPORT jstring JNICALL  Java_com_aguaviva_android_libssh2_Ssh2_rea
 
 
 extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_libssh2_Ssh2_openfile(JNIEnv * env, jclass obj, int sftp_session_id, jstring jsftppath, int creation_flags, int permissions_flags) {
+
     LIBSSH2_SFTP *sftp_session;
     if (database_sftp_session.get(sftp_session_id, &sftp_session)==false) {
         return -1;
@@ -594,7 +646,11 @@ extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_libssh2_Ssh2_openfil
 
     const char *sftppath = env->GetStringUTFChars(jsftppath, NULL);
 
-    LIBSSH2_SFTP_HANDLE *sftp_handle = libssh2_sftp_open(sftp_session, sftppath, creation_flags, permissions_flags);
+    LIBSSH2_SFTP_HANDLE *sftp_handle = NULL;
+    {
+        MyMutex m(&mutex_session);
+        sftp_handle = libssh2_sftp_open(sftp_session, sftppath, creation_flags, permissions_flags);
+    }
 
     env->ReleaseStringUTFChars(jsftppath, sftppath);
 
@@ -604,11 +660,14 @@ extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_libssh2_Ssh2_openfil
 extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_libssh2_Ssh2_closefile(JNIEnv * env, jclass obj, int sftp_handle_id) {
 
     LIBSSH2_SFTP_HANDLE *sftp_handle;
-    if (database_sft_handle.get(sftp_handle_id, &sftp_handle)==false) {
+    if (database_sft_handle.get(sftp_handle_id, &sftp_handle) == false) {
         return -1;
     }
 
-    libssh2_sftp_close(sftp_handle);
+    {
+        MyMutex m(&mutex_session);
+        libssh2_sftp_close(sftp_handle);
+    }
 
     database_sft_handle.del(sftp_handle_id);
     return 0;

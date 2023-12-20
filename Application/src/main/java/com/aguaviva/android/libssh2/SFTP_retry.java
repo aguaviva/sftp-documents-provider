@@ -1,8 +1,7 @@
 package com.aguaviva.android.libssh2;
 
 import android.os.ParcelFileDescriptor;
-
-import com.example.android.common.logger.Log;
+import android.util.Log;
 
 public class SFTP_retry extends SFTP {
 
