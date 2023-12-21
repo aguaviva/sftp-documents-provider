@@ -39,11 +39,9 @@
             android:name=".ActivityFormKey"
             android:exported="false" />
         <activity
-            android:name=".ActivityLog"
-            android:exported="false" />
-        <activity
             android:name=".ActivityTest"
-            android:exported="false" />
+            android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden" />
         <activity
             android:name=".ActivityListConnections"
             android:exported="true"
