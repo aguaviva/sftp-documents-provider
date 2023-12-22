@@ -175,10 +175,12 @@ public class ActivityTest  extends FragmentActivity {
                 int readBytes = 0;
                 int length;
 
+                //int file_length = selectedFileInputStream.available();
+
                 long time_start = 0;
                 long time_prev = time_start;
                 long sizeInLapse = 0;
-                while ((length = selectedFileInputStream.read(buffer)) > 0) {
+                while ((length = selectedFileInputStream.read(buffer)) != -1) {
 
                     sizeInLapse += length;
                     readBytes += length;
@@ -203,7 +205,7 @@ public class ActivityTest  extends FragmentActivity {
                                 @Override
                                 public void run() {
                                     Item item = (Item) arrayAdapter.getItem(index);
-                                    item.itemName = String.format("%2d)  %4.0f KB/s  %10.0f KB", index, bytesPerSecond / 1024, finalTotal / 1024);
+                                    item.itemName = String.format("%2d)  %10.0f KB %4.0f KB/s  ", index, finalTotal / 1024, bytesPerSecond / 1024);
                                     item.itemDescription = String.format("  time %4.2f s", time_total);
 
                                     //update view
@@ -227,7 +229,7 @@ public class ActivityTest  extends FragmentActivity {
                         @Override
                         public void run() {
                             Item item = (Item) arrayAdapter.getItem(index);
-                            item.itemName = String.format("%2d)  %4.0f KB/s  %10d KB DONE", index, bytesPerSecond / 1024.0f, finalReadBytes / 1024);
+                            item.itemName = String.format("%2d)  %10d KB %4.0f KB/s  DONE", index, finalReadBytes / 1024, bytesPerSecond / 1024.0f);
                             item.itemDescription = String.format("  time %4.2f s", time_total);
 
                             //update view
