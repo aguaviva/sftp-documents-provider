@@ -2,6 +2,7 @@ package com.aguaviva.android.sftpstorageprovider;
 
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.icu.text.SimpleDateFormat;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.DocumentsContract;
@@ -27,6 +28,8 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.time.format.DateTimeFormatter;
+import java.util.Date;
 
 public class ActivityFormConnection extends FragmentActivity {
 
@@ -115,6 +118,9 @@ public class ActivityFormConnection extends FragmentActivity {
                                 if (res >= 0) {
                                     int ssh2_sftp_session = Ssh2.sftp_init(session_id);
                                     if (ssh2_sftp_session >= 0) {
+
+                                        SimpleDateFormat formatter = new SimpleDateFormat("yyyy.MM.dd HH:mm");
+
                                         int sftp_handle_id = Ssh2.opendir(ssh2_sftp_session, root);
                                         if (sftp_handle_id >= 0) {
                                             while (true) {
@@ -122,7 +128,13 @@ public class ActivityFormConnection extends FragmentActivity {
                                                 if (entry.equals("")) {
                                                     break;
                                                 } else {
-                                                    logTerminal(String.format("%s\n", entry));
+                                                    String[] fields = entry.split(" ",4);
+                                                    String permissions = fields[0];
+                                                    String date = formatter.format(new Date(Long.parseLong(fields[1]) * 1000));
+                                                    long filesize = Long.parseLong(fields[2]);
+                                                    String filename = fields[3];
+
+                                                    logTerminal(String.format("%s %s %d %s\n", permissions, date, filesize, filename));
                                                 }
                                             }
                                             Ssh2.closedir(sftp_handle_id);
@@ -162,6 +174,7 @@ public class ActivityFormConnection extends FragmentActivity {
             public void onClick(View view) {
                 try {
                     helpers.saveConnectionString(editConnectionName.getText().toString(), UiToJson());
+                    getContentResolver().notifyChange(DocumentsContract.buildRootsUri(BuildConfig.DOCUMENTS_AUTHORITY), null);
                     finish();
                 } catch (IOException e) {
                     Toast.makeText(getBaseContext(),  "Connection name has invalid characters", Toast.LENGTH_LONG ).show();
@@ -190,7 +203,7 @@ public class ActivityFormConnection extends FragmentActivity {
                             case DialogInterface.BUTTON_POSITIVE:
                                 String connectionName =  editConnectionName.getText().toString();
                                 helpers.deleteConnection(connectionName);
-                                getContentResolver().notifyChange(DocumentsContract.buildDocumentUri(BuildConfig.DOCUMENTS_AUTHORITY, connectionName), null);
+                                getContentResolver().notifyChange(DocumentsContract.buildRootsUri(BuildConfig.DOCUMENTS_AUTHORITY), null);
                                 finish();
                                 break;
                         }
