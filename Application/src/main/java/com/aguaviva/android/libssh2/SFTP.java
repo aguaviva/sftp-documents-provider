@@ -235,6 +235,7 @@ public class SFTP {
 
     public interface onGetFileListener {
         boolean listen(String file);
+        void done();
     }
     public int ls(String path, onGetFileListener listener) {
 
@@ -247,12 +248,19 @@ public class SFTP {
                 if (entry.equals(""))
                     break;
 
+                // resolve symbolic links
+                if (entry.startsWith("l")) {
+                    String[] fields = entry.split(" ",4);
+                    entry = stat(path + "/" + fields[3]) + " " + fields[3];
+                }
+
                 if (listener.listen(entry) == false)
                     break;
             }
             if (Ssh2.closedir(sftp_handle_id)< 0) {
                 Log.e(TAG, "closedir " + getLastError());
             }
+            listener.done();
         } else {
             Log.e(TAG, "Put: Can't Ssh2.opendir " + path + " " + getSftpLastError() + " " + getLastError());
         }

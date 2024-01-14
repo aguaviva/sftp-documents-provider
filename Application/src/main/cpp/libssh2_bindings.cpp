@@ -534,8 +534,6 @@ Java_com_aguaviva_android_libssh2_Ssh2_sftp_1stat(JNIEnv *env, jclass clazz,
         return env->NewStringUTF("* libssh2_sftp_stat err");
     }
 
-    env->ReleaseStringUTFChars(jsftppath, sftppath);
-
     char permissions[256];
 
     strcpy(permissions, "----------");
@@ -567,7 +565,8 @@ Java_com_aguaviva_android_libssh2_Ssh2_sftp_1stat(JNIEnv *env, jclass clazz,
 
     permissions[10]=' ';
 
-    sprintf(&permissions[11],"%ld %llu", attrs.atime, attrs.filesize);
+    sprintf(&permissions[11],"%ld %llu", attrs.mtime, attrs.filesize);
+    env->ReleaseStringUTFChars(jsftppath, sftppath);
 
     return env->NewStringUTF(permissions);
 }
@@ -618,16 +617,45 @@ extern "C" JNIEXPORT jstring JNICALL  Java_com_aguaviva_android_libssh2_Ssh2_rea
         return env->NewStringUTF("");
     }
 
-    char mem[512];
+    char shortentry[512];
     char longentry[512];
     LIBSSH2_SFTP_ATTRIBUTES attrs;
 
     /* loop until we fail */
-    int rc = libssh2_sftp_readdir_ex(sftp_handle, mem, sizeof(mem),
+    int res = libssh2_sftp_readdir_ex(sftp_handle, shortentry, sizeof(shortentry),
                                      longentry, sizeof(longentry), &attrs);
-    if (rc > 0) {
+    if (res > 0) {
         /* rc is the length of the file name in the mem
            buffer */
+
+        if (LIBSSH2_SFTP_S_ISDIR(attrs.permissions))
+            longentry[0]='d';
+
+        if (attrs.permissions & LIBSSH2_SFTP_S_IRUSR)
+            longentry[1]='r';
+        if (attrs.permissions & LIBSSH2_SFTP_S_IWUSR)
+            longentry[2]='w';
+        if (attrs.permissions & LIBSSH2_SFTP_S_IXUSR)
+            longentry[3]='x';
+
+        if (attrs.permissions & LIBSSH2_SFTP_S_IRGRP)
+            longentry[4]='r';
+        if (attrs.permissions & LIBSSH2_SFTP_S_IWGRP)
+            longentry[5]='w';
+        if (attrs.permissions & LIBSSH2_SFTP_S_IXGRP)
+            longentry[6]='x';
+
+
+        if (attrs.permissions & LIBSSH2_SFTP_S_IROTH)
+            longentry[7]='r';
+        if (attrs.permissions & LIBSSH2_SFTP_S_IWOTH)
+            longentry[8]='w';
+        if (attrs.permissions & LIBSSH2_SFTP_S_IXOTH)
+            longentry[9]='x';
+
+        longentry[10]=' ';
+
+        sprintf(&longentry[11],"%ld %llu %s", attrs.mtime, attrs.filesize, shortentry);
 
         printf("%s\n", longentry);
         return env->NewStringUTF(longentry);

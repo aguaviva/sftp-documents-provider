@@ -50,6 +50,9 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -83,22 +86,16 @@ public class MyCloudProvider extends DocumentsProvider {
             Document.COLUMN_SIZE
     };
 
-    // No official policy on how many to return, but make sure you do limit the number of recent
-    // and search results.
-    private static final int MAX_SEARCH_RESULTS = 20;
-    private static final int MAX_LAST_MODIFIED = 5;
-
-    // A file object at the root of the file hierarchy.  Depending on your implementation, the root
-    // does not need to be an existing file system directory.  For example, a tag-based document
-    // provider might return a directory containing all tags, represented as child directories.
-
     String currentConnectionName = "";
     private SFTP sftp_client = null;
     private SFTPMT sftp_client_mt = null;
 
-    private Pattern pattern = Pattern.compile("^(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(.+)$", Pattern.CASE_INSENSITIVE);
+    class CacheEntry {
+        public List<String> files = new ArrayList<String>();
+        public boolean loading = true;
 
-    private SimpleDateFormat dateFormat = new SimpleDateFormat("MMM d yyyy HH:mm");
+    }
+    ConcurrentHashMap<String, CacheEntry> cache_ls = new ConcurrentHashMap<String, CacheEntry>();
 
     @Override
     public boolean onCreate() {
@@ -117,43 +114,89 @@ public class MyCloudProvider extends DocumentsProvider {
         return true;
     }
 
-    private boolean connectIfNecessary(String connectionId)
-    {
-        synchronized (sftp_client_mt) {
+    public static final int SSH_CONNECTED = 0;
+    public static final int SSH_DISCONNECTED = 1;
+    public static final int SSH_CONNECTING = 2;
+    private int ssh_state = SSH_DISCONNECTED;
 
-            String connectionName = getConnectionNameFrom(connectionId);
+    private void connect(String connectionName) {
+        int port = -1;
+        Log.i(TAG, String.format("Connecting Begin "));
 
-            if (currentConnectionName.startsWith(connectionName) == false) {
-                int port = -1;
-                Log.i(TAG, String.format("Connecting Begin "));
+        Connection connection;
 
-                Connection connection;
-
-                try {
-                    connection = helpers.loadConnection(connectionName);
-                } catch (JSONException e) {
-                    throw new RuntimeException(e);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-
-                Log.i(TAG, String.format("Resolving %s", connection.hostname));
-                try {
-                    connection.hostname = InetAddress.getByName(connection.hostname).getHostAddress();
-                } catch (UnknownHostException e) {
-                    throw new RuntimeException(e);
-                }
-                Log.i(TAG, String.format("Resolved %s", connection.hostname));
-                sftp_client_mt.Init(connection, 1);
-
-                sftp_client.Connect(connection);
-
-                Log.i(TAG, String.format("Connecting End"));
-
-                currentConnectionName = connectionId;
-            }
+        try {
+            connection = helpers.loadConnection(connectionName);
+        } catch (JSONException e) {
+            throw new RuntimeException(e);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
-        return true;
+
+        Log.i(TAG, String.format("Resolving %s", connection.hostname));
+        try {
+            connection.hostname = InetAddress.getByName(connection.hostname).getHostAddress();
+        } catch (UnknownHostException e) {
+            throw new RuntimeException(e);
+        }
+        Log.i(TAG, String.format("Resolved %s", connection.hostname));
+        sftp_client_mt.Init(connection, 1);
+
+        sftp_client.Connect(connection);
+
+        Log.i(TAG, String.format("Connecting End"));
+
+        currentConnectionName = connectionName;
+    }
+
+    private MatrixCursor connectingMatrixCursor(String documentId) {
+        MatrixCursor result = new MatrixCursor(DEFAULT_DOCUMENT_PROJECTION) {
+            public String extra_info = null;
+
+            @Override
+            public Bundle getExtras() {
+                Bundle bundle = new Bundle();
+                bundle.putBoolean(DocumentsContract.EXTRA_LOADING, extra_info != null);
+                bundle.putString(DocumentsContract.EXTRA_INFO, "queryDocument: Connecting to server ...");
+                return bundle;
+            }
+        };
+
+        result.setNotificationUri(getContext().getContentResolver(), DocumentsContract.buildDocumentUri(BuildConfig.DOCUMENTS_AUTHORITY, documentId));
+        return result;
+    }
+
+    private MatrixCursor connectIfNecessary(String documentId)
+    {
+        synchronized (currentConnectionName) {
+
+            if (ssh_state == SSH_CONNECTING ) {
+                return connectingMatrixCursor(documentId);
+            }
+
+            String connectionName = getConnectionNameFrom(documentId);
+            if (currentConnectionName.startsWith(connectionName) == false)
+                ssh_state = SSH_DISCONNECTED;
+
+            if (ssh_state == SSH_CONNECTED)
+                return null;
+
+            ssh_state = SSH_CONNECTING;
+
+            cache_ls.clear();
+            MatrixCursor result = connectingMatrixCursor(documentId);
+
+            new Thread() {
+                public void run() {
+                    connect(connectionName);
+                    ssh_state = SSH_CONNECTED;
+
+                    MyCloudProvider.this.getContext().getContentResolver().notifyChange(DocumentsContract.buildDocumentUri(BuildConfig.DOCUMENTS_AUTHORITY, documentId), null);
+                }
+            }.start();
+
+            return result;
+        }
     }
 
     private boolean needsReconnect(String parentDocumentId) {
@@ -243,6 +286,19 @@ public class MyCloudProvider extends DocumentsProvider {
         return parentId;
     }
 
+    private String getFilename(String documentId) {
+        int l = documentId.lastIndexOf("/");
+        String filenameId = documentId.substring(l+1);
+        return filenameId;
+    }
+
+    private void notifyChange(String documentId) {
+        synchronized (cache_ls) {
+            getContext().getContentResolver().notifyChange(DocumentsContract.buildDocumentUri(BuildConfig.DOCUMENTS_AUTHORITY, documentId), null);
+            cache_ls.remove(documentId);
+        }
+    }
+
     // BEGIN_INCLUDE(query_document)
     @Override
     public Cursor queryDocument(String documentId, String[] projection)
@@ -250,14 +306,6 @@ public class MyCloudProvider extends DocumentsProvider {
 
         synchronized(this) {
             Log.v(TAG, "Begin queryDocument: " + documentId);
-            /*
-            if (projection != null) {
-                for (String s : projection) {
-                    Log.v(TAG, s);
-                }
-            }
-            */
-
 
             boolean isRoot = getConnectionNameFrom(documentId).equals(documentId);
             if (isRoot) {
@@ -270,46 +318,29 @@ public class MyCloudProvider extends DocumentsProvider {
                 row.add(Document.COLUMN_ICON, R.drawable.ic_launcher);
                 row.add(Document.COLUMN_MIME_TYPE, Document.MIME_TYPE_DIR);
                 row.add(Document.COLUMN_FLAGS, Document.FLAG_DIR_SUPPORTS_CREATE);
-                Log.v(TAG, "End queryDocument");
-                Log.v(TAG, "");
+
+                result.setNotificationUri(getContext().getContentResolver(), DocumentsContract.buildDocumentUri(BuildConfig.DOCUMENTS_AUTHORITY, documentId));
                 return result;
 
             } else {
 
-                if (needsReconnect(documentId)) {
+                MatrixCursor result1 = connectIfNecessary(documentId);
+                if (result1 != null)
+                    return result1;
 
-                    // We cannot block, so if there is no connection, let's return something, connect in a thread and once there notify a change
-                    MatrixCursor result = new MatrixCursor(projection != null ? projection : DEFAULT_DOCUMENT_PROJECTION) {
-                        public String extra_info = null;
-                        @Override
-                        public Bundle getExtras() {
-                            Bundle bundle = new Bundle();
-                            bundle.putBoolean(DocumentsContract.EXTRA_LOADING, extra_info!=null);
-                            bundle.putString(DocumentsContract.EXTRA_INFO, "queryDocument: Connecting to server ...");
-                            return bundle;
-                        }
-                    };
-
-                    new Thread(){
-                        public void run() {
-                            connectIfNecessary(documentId);
-                            MyCloudProvider.this.getContext().getContentResolver().notifyChange(DocumentsContract.buildDocumentUri(BuildConfig.DOCUMENTS_AUTHORITY, documentId), null);
-                        }
-                    }.start();
-
-                    Log.v(TAG, "End queryDocument");
-                    Log.v(TAG, "");
-                    return result;
-
-                } else {
-
+                {
                     MatrixCursor result = new MatrixCursor(resolveDocumentProjection(projection));
-                    includeId(result, documentId);
-                    result.setNotificationUri(getContext().getContentResolver(), DocumentsContract.buildDocumentUri(BuildConfig.DOCUMENTS_AUTHORITY, documentId));
-                    Log.v(TAG, "End queryDocument");
-                    Log.v(TAG, "");
-                    return result;
 
+                    String entry  = sftp_client.stat(getRemotePath(documentId));
+                    if (entry.startsWith("*")) {
+                        Log.e(TAG, String.format("sftp_stat %s: %s\n", documentId, entry));
+                        Log.e(TAG, "Error " + sftp_client.getLastError());
+                    }
+
+                    includeFile(result, getParent(documentId), entry + " " + getFilename(documentId));
+
+                    result.setNotificationUri(getContext().getContentResolver(), DocumentsContract.buildDocumentUri(BuildConfig.DOCUMENTS_AUTHORITY, documentId));
+                    return result;
                 }
             }
 
@@ -322,63 +353,57 @@ public class MyCloudProvider extends DocumentsProvider {
     public Cursor queryChildDocuments(String parentDocumentId, String[] projection,
                                       String sortOrder) throws FileNotFoundException {
 
-        synchronized(this) {
-            Log.v(TAG, "Begin queryChildDocuments");
-            Log.v(TAG, " parentDocumentId: " + parentDocumentId);
-            Log.v(TAG, " sortOrder: " + sortOrder);
+        MatrixCursor result1 = connectIfNecessary(parentDocumentId);
+        if (result1 != null)
+            return result1;
 
-            if (needsReconnect(parentDocumentId)) {
-
-                Log.v(TAG, "Need to connect! returning placeholder...");
-                MatrixCursor result = new MatrixCursor(projection != null ? projection : DEFAULT_DOCUMENT_PROJECTION) {
-                    public String extra_info = null;
-                    @Override
-                    public Bundle getExtras() {
-                        Bundle bundle = new Bundle();
-                        bundle.putBoolean(DocumentsContract.EXTRA_LOADING, extra_info!=null);
-                        bundle.putString(DocumentsContract.EXTRA_INFO, "Connecting to server...");
-                        return bundle;
+        synchronized (cache_ls) {
+            CacheEntry cacheEntry = cache_ls.get(parentDocumentId);
+            if (cacheEntry != null) {
+                if (cacheEntry.loading == true) {
+                    // cache busy
+                    return connectingMatrixCursor(parentDocumentId);
+                } else {
+                    // cache hit
+                    final MatrixCursor result = new MatrixCursor(resolveDocumentProjection(projection));
+                    for (String entry : cacheEntry.files) {
+                        includeFile(result, parentDocumentId, entry);
                     }
-                };
 
-                Thread thread = new Thread(){
-                    public void run(){
-                        connectIfNecessary(parentDocumentId);
-
-                        MyCloudProvider.this.getContext().getContentResolver().notifyChange(DocumentsContract.buildDocumentUri(BuildConfig.DOCUMENTS_AUTHORITY, parentDocumentId), null);
-                    }
-                };
-                thread.start();
-
-                result.setNotificationUri(getContext().getContentResolver(), DocumentsContract.buildDocumentUri(BuildConfig.DOCUMENTS_AUTHORITY, parentDocumentId));
-
-                Log.v(TAG, "End queryChildDocuments");
-                Log.v(TAG, "");
-                return result;
-
+                    result.setNotificationUri(getContext().getContentResolver(), DocumentsContract.buildDocumentUri(BuildConfig.DOCUMENTS_AUTHORITY, parentDocumentId));
+                    return result;
+                }
             } else {
+                // cache miss
+                cacheEntry = new CacheEntry();
+                cache_ls.put(parentDocumentId, cacheEntry); //this indicates WIP
 
-                Log.v(TAG, "...returning actual data.");
-                final MatrixCursor result = new MatrixCursor(resolveDocumentProjection(projection));
-                int res = sftp_client.ls(getRemotePath(parentDocumentId), new SFTP.onGetFileListener() {
-                    @Override
-                    public boolean listen(String entry) {
-                        if (entry.endsWith(" .") || entry.endsWith(" ..")) {
+                MatrixCursor wipCursor = connectingMatrixCursor(parentDocumentId);
 
-                        } else {
-                            includeFile(result, parentDocumentId, null, entry);
+                try {
+                    CacheEntry finalCacheEntry = cacheEntry;
+                    sftp_client_mt.ls(getRemotePath(parentDocumentId), new SFTP.onGetFileListener() {
+                        @Override
+                        public boolean listen(String entry) {
+                            if (entry.endsWith(" .") || entry.endsWith(" ..")) {
+
+                            } else {
+                                finalCacheEntry.files.add(entry);
+                            }
+                            return true;
                         }
-                        return true;
-                    }
-                });
-                if (res < 0) {
-                    throw new FileNotFoundException();
+
+                        @Override
+                        public void done() {
+                            finalCacheEntry.loading = false;
+                            getContext().getContentResolver().notifyChange(DocumentsContract.buildDocumentUri(BuildConfig.DOCUMENTS_AUTHORITY, parentDocumentId), null);
+                        }
+                    });
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
                 }
 
-                result.setNotificationUri(getContext().getContentResolver(), DocumentsContract.buildDocumentUri(BuildConfig.DOCUMENTS_AUTHORITY, parentDocumentId));
-                Log.v(TAG, "End queryChildDocuments");
-                Log.v(TAG, "");
-                return result;
+                return wipCursor;
             }
         }
     }
@@ -403,6 +428,7 @@ public class MyCloudProvider extends DocumentsProvider {
                     return readEnd;
                 } else if (mode.startsWith("w")) {
                     sftp_client_mt.put(getRemotePath(documentId), readEnd);
+                    notifyChange(getParent(documentId));
                     return writeEnd;
                 }
             }
@@ -432,8 +458,9 @@ public class MyCloudProvider extends DocumentsProvider {
             throws FileNotFoundException {
         Log.v(TAG, "createDocument");
 
-        getContext().getContentResolver().notifyChange(
-                DocumentsContract.buildDocumentUri(BuildConfig.DOCUMENTS_AUTHORITY, parentDocumentId), null);
+        getContext().getContentResolver().notifyChange(DocumentsContract.buildDocumentUri(BuildConfig.DOCUMENTS_AUTHORITY, parentDocumentId), null);
+
+        notifyChange(parentDocumentId);
 
         return parentDocumentId + "/" + displayName;
     }
@@ -482,9 +509,8 @@ public class MyCloudProvider extends DocumentsProvider {
             throw new FileNotFoundException(sftp_client.getLastError());
         }
 
-        String parentId = getParent(documentId);
-        //Uri notifyUri = DocumentsContract.buildDocumentUri(BuildConfig.DOCUMENTS_AUTHORITY, parentId);
-        //getContext().getContentResolver().notifyChange(notifyUri, null);
+        String parentDocumentId = getParent(documentId);
+        notifyChange(parentDocumentId);
     }
     // END_INCLUDE(delete_document)
 
@@ -494,10 +520,8 @@ public class MyCloudProvider extends DocumentsProvider {
     public void removeDocument(String documentId, String parentDocumentId)
             throws FileNotFoundException {
         Log.v(TAG, "removeDocument " + documentId + " " + parentDocumentId);
-        deleteDocument(documentId);
 
-        getContext().getContentResolver().notifyChange(
-                DocumentsContract.buildDocumentUri(BuildConfig.DOCUMENTS_AUTHORITY, parentDocumentId), null);
+        notifyChange(parentDocumentId);
     }
     // END_INCLUDE(remove_document)
 
@@ -517,8 +541,7 @@ public class MyCloudProvider extends DocumentsProvider {
                 throw new FileNotFoundException(sftp_client.getLastError());
             }
 
-            Uri notifyUri = DocumentsContract.buildDocumentUri(BuildConfig.DOCUMENTS_AUTHORITY, targetParentDocumentId);
-            getContext().getContentResolver().notifyChange(notifyUri, null);
+            notifyChange(targetParentDocumentId);
 
             return newDocumentID;
         }
@@ -544,25 +567,19 @@ public class MyCloudProvider extends DocumentsProvider {
         }
 
         // sync database
-        /*
-        String parentSourceDocumentId = getParent(sourceDocumentId);
-        Uri sourceUri = DocumentsContract.buildDocumentUri(AUTHORITY, parentSourceDocumentId);
-        getContext().getContentResolver().notifyChange(sourceUri, null);
-        String parentTargetDocumentId = getParent(targetDocumentId);
-        Uri targetUri = DocumentsContract.buildDocumentUri(AUTHORITY, parentTargetDocumentId);
-        getContext().getContentResolver().notifyChange(targetUri, null);
-        */
+        notifyChange(sourceParentDocumentId);
+        notifyChange(targetParentDocumentId);
+
         return targetDocumentId;
     }
     // END_INCLUDE(moveDocument)
 
-/*
     @Override
     public String getDocumentType(String documentId) throws FileNotFoundException {
-        File file = getFileForDocId(documentId);
-        return getTypeForFile(file);
+        String filename = getFilename(documentId);
+        return getTypeForName(filename);
     }
-*/
+
     /**
      * @param projection the requested root column projection
      * @return either the requested root column projection, or the default projection if the
@@ -594,135 +611,44 @@ public class MyCloudProvider extends DocumentsProvider {
         return "application/octet-stream";
     }
 
-    private void includeId(MatrixCursor result, String docId) throws FileNotFoundException
-    {
-        String path, filename;
-
-        String permissions  = sftp_client.stat(getRemotePath(docId));
-        if (permissions.startsWith("*")) {
-            Log.e(TAG, String.format("sftp_stat %s: %s\n", docId, permissions));
-            Log.e(TAG, "Error " + sftp_client.getLastError());
-            return;
-        }
-
-        boolean is_directory = permissions.startsWith("d") | permissions.startsWith("l");
-        if (is_directory) {
-            path = docId;
-            int i = docId.lastIndexOf("/");
-            if (i>=0)
-                filename = docId.substring(i+1);
-            else
-                filename = "";
-        } else {
-            int i = docId.lastIndexOf("/");
-            path = docId.substring(0,i);
-            filename = docId.substring(i+1);
-        }
-
-        int res = sftp_client.ls(getRemotePath(path), new SFTP.onGetFileListener() {
-            @Override
-            public boolean listen(String entry) {
-                if (is_directory) {
-                    if (entry.endsWith(" .")) {
-                        Log.v(TAG, entry);
-                        // replace . with directory name
-                        includeFile(result, path, filename, entry);
-                        return false;
-                    }
-                } else if (entry.endsWith(" " + filename)) {
-                    Log.v(TAG, entry);
-                    includeFile(result, path, filename, entry);
-                    return false;
-                }
-                return true;
-            }
-        });
-        if (res<0)
-            throw new FileNotFoundException();
-
-    }
-
-
     /**
      * Add a representation of a file to a cursor.
      *
      * @param result the cursor to modify
-     * @param path  the document ID representing the desired file (may be null if given file)
-     * @param displayName   the File object representing the desired file (may be null if given docID)
+     * @param parentId  the document ID representing the desired file (may be null if given file)
+     * @param entry   the string with all the data of the docId)
      * @throws FileNotFoundException
      */
-    private void includeFile(MatrixCursor result, String path, String displayName, String entry) {
+    private void includeFile(MatrixCursor result, String parentId, String entry) {
 
-        Matcher m = pattern.matcher(entry);
-        if (m.matches()==false)
-            Log.e(TAG, String.format("cant match `%s`", entry));
+        String[] fields = entry.split(" ",4);
+        String permissions = fields[0];
+        long dateTime = Long.parseLong(fields[1]);
+        long filesize = Long.parseLong(fields[2]);
+        String filename = fields[3];
 
-        String permissions = m.group(1);
-        String blocks = m.group(2);
-        String user = m.group(3);
-        String group = m.group(4);
-
-        //parse size
-        long  file_size = 0;
-        try {
-            String s = m.group(5);
-            file_size = Long.parseLong(s);
-        } catch (NumberFormatException e) {
-            Log.e(TAG, "cant parse " + m.group(5));
-        }
-
-        String file_name = m.group(9);
-
-        if (displayName==null)
-            displayName = file_name;
-
-        String docId;
-        if (file_name.equals(".")) {
-            docId = path;
-        }
-        else {
-            docId = path + "/" + file_name;
-        }
-
-        // get last access time and real permissions
-        long dateTime = 0;
-        //if (permissions.startsWith("l"))
-        {
-            String str[]  = sftp_client.stat(getRemotePath(docId)).split(" ");
-
-            if (str[0].charAt(0)!='*') {
-                permissions = str[0];
-                dateTime = Long.parseLong(str[1]);
-            }
-        }
+        //we assume all is writable is writable :)
 
         int flags = 0;
         String mimeType = "application/octet-stream";
         if (permissions.startsWith("d")) {
             mimeType = Document.MIME_TYPE_DIR;
-
-            // Add FLAG_DIR_SUPPORTS_CREATE if the file is a writable directory.
-            //if (file.isDirectory() && file.canWrite()) {
-            //    flags |= Document.FLAG_DIR_SUPPORTS_CREATE;
-            //}
             flags |= Document.FLAG_DIR_SUPPORTS_CREATE;
         } else if (true) { //)(file.canWrite()) {
-            // If the file is writable set FLAG_SUPPORTS_WRITE and
-            // FLAG_SUPPORTS_DELETE
-            //flags |= Document.FLAG_SUPPORTS_WRITE;
-            //flags |= Document.FLAG_SUPPORTS_DELETE;
+            flags |= Document.FLAG_SUPPORTS_WRITE;
+            flags |= Document.FLAG_SUPPORTS_DELETE;
 
             // Add SDK specific flags if appropriate
             if (SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                 flags |= Document.FLAG_SUPPORTS_RENAME;
             }
             if (SDK_INT >= Build.VERSION_CODES.N) {
-                //flags |= Document.FLAG_SUPPORTS_REMOVE;
+                flags |= Document.FLAG_SUPPORTS_REMOVE;
                 flags |= Document.FLAG_SUPPORTS_MOVE;
                 flags |= Document.FLAG_SUPPORTS_COPY;
             }
 
-            mimeType = getTypeForName(docId);
+            mimeType = getTypeForName(filename);
         }
 
         //if (mimeType.startsWith("image/")) {
@@ -731,15 +657,12 @@ public class MyCloudProvider extends DocumentsProvider {
         //}
 
         final MatrixCursor.RowBuilder row = result.newRow();
-        row.add(Document.COLUMN_DOCUMENT_ID, docId);
-        row.add(Document.COLUMN_DISPLAY_NAME, displayName);
-        row.add(Document.COLUMN_SIZE, file_size);
+        row.add(Document.COLUMN_DOCUMENT_ID, parentId +"/" + filename);
+        row.add(Document.COLUMN_DISPLAY_NAME, filename);
+        row.add(Document.COLUMN_SIZE, filesize);
         row.add(Document.COLUMN_MIME_TYPE, mimeType);
-        if (dateTime>0)
-            row.add(Document.COLUMN_LAST_MODIFIED, dateTime* 1000);
+        row.add(Document.COLUMN_LAST_MODIFIED, dateTime* 1000);
         row.add(Document.COLUMN_FLAGS, flags);
-
-        // Add a custom icon
         row.add(Document.COLUMN_ICON, R.drawable.ic_launcher);
     }
 

@@ -118,5 +118,4 @@ public class SFTPMT {
     public void ls(String documentId, SFTP.onGetFileListener listener) throws InterruptedException {
         arrayQueue.put(new SftpTask(TASK_LS, documentId, null, listener));
     }
-
 }
