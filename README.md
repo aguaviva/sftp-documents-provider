@@ -1,39 +1,31 @@
 sftp-documents-provider
 =======================
 
-`SFTP Documents Provider` is an Android app to provide access to shared folder by SFTPS.
-
-This is a proof of concept created in a few days. It works but be gentle.
+`SFTP Documents Provider` is an Android app to provide access to a remote folder using SFTPS.
 
 Disclaimer 
 ----------
 
-I am just a rookie, so please if you are an android expert please have a quick look at the bugs section as I need help with a few small issues :) 
+This is a proof of concept created in a few days. It works but please be gentle. Also I am learning as I go, feedback is welcome ;) 
+
+Features
+--------
+
+- file random access
+- delete/remove
+- remote copying (without a roundtrip)
+- move
 
 Notes
 -----
 
-- Known issues have been filed as bugs, PR's are welcome :)
+- The interface is not very polished but PRs are welcome!!
 - Remember to log in using the overflow menu
 - Auth mode only supports private/public keys
   - Your private key must begin with `-----BEGIN RSA PRIVATE KEY----- `
   - OpenSSH keys are not supported
   - Add keys using the Overflow menu that (not sure why) shows up in the overflow menu on the toolbar at the bottom of screen (help!)
-- The interface is not very polished
-
-Features
---------
-Does support
-- multithreaded upload/download
-- delete/remove
-- remote copying
-- move
-
-Help wanted! :)
-------------
-
-- Why PDFs cannot be read? See bug https://github.com/aguaviva/sftp-documents-provider/issues/1
-- How do I get random access to files? 
+- Displaying thumbnails in remote connections might be very slow, disable this in your favourite file manager.     
 
 Pre-requisites
 --------------

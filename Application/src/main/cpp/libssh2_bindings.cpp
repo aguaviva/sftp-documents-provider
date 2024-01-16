@@ -692,24 +692,40 @@ extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_libssh2_Ssh2_closefi
         return -1;
     }
 
+    int res = 0;
     {
         MyMutex m(&mutex_session);
-        libssh2_sftp_close(sftp_handle);
+        res = libssh2_sftp_close(sftp_handle);
     }
 
     database_sft_handle.del(sftp_handle_id);
+    return res;
+}
+
+extern "C" JNIEXPORT int JNICALL  Java_com_aguaviva_android_libssh2_Ssh2_seekfile(JNIEnv * env, jclass obj, int sftp_handle_id, jlong offset) {
+    LIBSSH2_SFTP_HANDLE *sftp_handle;
+    if (database_sft_handle.get(sftp_handle_id, &sftp_handle) == false) {
+        return -1;
+    }
+
+    {
+        MyMutex m(&mutex_session);
+        libssh2_sftp_seek64(sftp_handle, offset);
+    }
+
     return 0;
 }
 
-extern "C" JNIEXPORT int JNICALL Java_com_aguaviva_android_libssh2_Ssh2_readfile(JNIEnv *env, jclass clazz, jint sftp_handle_id, jbyteArray data) {
+
+extern "C" JNIEXPORT int JNICALL Java_com_aguaviva_android_libssh2_Ssh2_readfile(JNIEnv *env, jclass clazz, jint sftp_handle_id, jbyteArray data, jint offset, jint len) {
     LIBSSH2_SFTP_HANDLE *sftp_handle;
     if (database_sft_handle.get(sftp_handle_id, &sftp_handle) == false) {
-        return 0;
+        return -1;
     }
 
     jbyte *buffer = env->GetByteArrayElements(data, NULL);
-    int len = env->GetArrayLength(  data );
-    ssize_t s = libssh2_sftp_read(sftp_handle, (char *)buffer, len);
+    //int len = env->GetArrayLength(  data );
+    ssize_t s = libssh2_sftp_read(sftp_handle, (char *)&buffer[offset], len);
 
     env->ReleaseByteArrayElements(data, buffer, 0);
 
@@ -720,7 +736,7 @@ extern "C" JNIEXPORT int JNICALL Java_com_aguaviva_android_libssh2_Ssh2_readfile
 extern "C" JNIEXPORT int JNICALL Java_com_aguaviva_android_libssh2_Ssh2_writefile(JNIEnv *env, jclass clazz, jint sftp_handle_id, jbyteArray data, int offset, int length) {
     LIBSSH2_SFTP_HANDLE *sftp_handle;
     if (database_sft_handle.get(sftp_handle_id, &sftp_handle) == false) {
-        return 0;
+        return -1;
     }
 
     jbyte *buffer = env->GetByteArrayElements(data, NULL);

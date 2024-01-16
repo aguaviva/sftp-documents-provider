@@ -25,10 +25,15 @@ import android.database.Cursor;
 import android.database.MatrixCursor;
 import android.icu.text.SimpleDateFormat;
 import android.net.Uri;
+import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.CancellationSignal;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
 import android.os.ParcelFileDescriptor;
+import android.os.storage.StorageManager;
 import android.provider.DocumentsContract;
 import android.provider.DocumentsContract.Document;
 import android.provider.DocumentsContract.Root;
@@ -40,6 +45,7 @@ import com.aguaviva.android.libssh2.Connection;
 import com.aguaviva.android.libssh2.SFTP;
 import com.aguaviva.android.libssh2.SFTPMT;
 import com.aguaviva.android.libssh2.SFTP_retry;
+import com.aguaviva.android.libssh2.SftpSession;
 import com.aguaviva.android.libssh2.Ssh2;
 //import com.example.android.common.logger.Log;
 
@@ -55,6 +61,7 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import android.os.Looper;
 
 /**
  * Manages documents and exposes them to the Android system for sharing.
@@ -89,6 +96,8 @@ public class MyCloudProvider extends DocumentsProvider {
     String currentConnectionName = "";
     private SFTP sftp_client = null;
     private SFTPMT sftp_client_mt = null;
+    private SftpSession sftp_session = null;
+    private StorageManager mStorageManager;
 
     class CacheEntry {
         public List<String> files = new ArrayList<String>();
@@ -97,9 +106,13 @@ public class MyCloudProvider extends DocumentsProvider {
     }
     ConcurrentHashMap<String, CacheEntry> cache_ls = new ConcurrentHashMap<String, CacheEntry>();
 
+
+
     @Override
     public boolean onCreate() {
         Log.v(TAG, "onCreate");
+        final Context context = getContext();
+        mStorageManager = (StorageManager) context.getSystemService(Context.STORAGE_SERVICE);
 
         helpers.Init(getContext());
 
@@ -110,6 +123,9 @@ public class MyCloudProvider extends DocumentsProvider {
 
         if (sftp_client_mt==null)
             sftp_client_mt = new SFTPMT();
+
+        if (sftp_session==null)
+            sftp_session = new SftpSession(Looper.getMainLooper());
 
         return true;
     }
@@ -143,6 +159,7 @@ public class MyCloudProvider extends DocumentsProvider {
         sftp_client_mt.Init(connection, 1);
 
         sftp_client.Connect(connection);
+        sftp_session.Connect(connection);
 
         Log.i(TAG, String.format("Connecting End"));
 
@@ -184,13 +201,13 @@ public class MyCloudProvider extends DocumentsProvider {
             ssh_state = SSH_CONNECTING;
 
             cache_ls.clear();
+
             MatrixCursor result = connectingMatrixCursor(documentId);
 
             new Thread() {
                 public void run() {
                     connect(connectionName);
                     ssh_state = SSH_CONNECTED;
-
                     MyCloudProvider.this.getContext().getContentResolver().notifyChange(DocumentsContract.buildDocumentUri(BuildConfig.DOCUMENTS_AUTHORITY, documentId), null);
                 }
             }.start();
@@ -415,8 +432,17 @@ public class MyCloudProvider extends DocumentsProvider {
     public ParcelFileDescriptor openDocument(final String documentId, final String mode, CancellationSignal signal)
             throws FileNotFoundException {
 
-        Log.v(TAG, "openDocument, mode: " + mode);
+        ParcelFileDescriptor pfd = null;
 
+        //Log.v(TAG, "openDocument, mode: " + mode + " " + documentId);
+        try {
+
+            return pfd = sftp_session.GetParcelFileDescriptor(mStorageManager, getRemotePath(documentId), mode);
+
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
+/*
         try {
             ParcelFileDescriptor[] pipe = ParcelFileDescriptor.createReliablePipe();
             final ParcelFileDescriptor readEnd = pipe[0];
@@ -441,6 +467,8 @@ public class MyCloudProvider extends DocumentsProvider {
 
         ParcelFileDescriptor o = null;
         return o;
+ */
+
     }
     // END_INCLUDE(open_document)
 

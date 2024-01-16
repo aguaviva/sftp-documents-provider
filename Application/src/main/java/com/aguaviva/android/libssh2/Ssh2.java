@@ -54,8 +54,9 @@ public class Ssh2 {
 
     public static native int openfile(int sftp_session_id, String jscppath, int creation_flags, int permissions_flags);
     public static native int closefile(int sftp_handle_id);
-    public static native int readfile(int sftp_handle_id, byte[] data);
+    public static native int readfile(int sftp_handle_id, byte[] data, int offset, int len);
     public static native int writefile(int sftp_handle_id, byte[] data, int offset, int length);
+    public static native int seekfile(int sftp_handle_id, long offset);
     public static native int sftp_last_error(int sftp_handle_id);
     public static native String sftp_stat(int sftp_handle_id, String jscppath);
 
