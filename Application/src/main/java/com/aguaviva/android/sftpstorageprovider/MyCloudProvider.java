@@ -494,7 +494,6 @@ public class MyCloudProvider extends DocumentsProvider {
     }
     // END_INCLUDE(create_document)
 
-    /*
     // BEGIN_INCLUDE(rename_document)
     @Override
     public String renameDocument(String documentId, String displayName)
@@ -504,29 +503,16 @@ public class MyCloudProvider extends DocumentsProvider {
             throw new FileNotFoundException("Failed to rename document, new name is null");
         }
 
-        // Create the destination file in the same directory as the source file
-        File sourceFile = getFileForDocId(documentId);
-        File sourceParentFile = sourceFile.getParentFile();
-        if (sourceParentFile == null) {
-            throw new FileNotFoundException("Failed to rename document. File has no parent.");
-        }
-        File destFile = new File(sourceParentFile.getPath(), displayName);
+        String newName = getParent(documentId)+"/"+displayName;
+        sftp_client.rename(getRemotePath(documentId), getRemotePath(newName));
 
-        // Try to do the rename
-        try {
-            boolean renameSucceeded = sourceFile.renameTo(destFile);
-            if (!renameSucceeded) {
-                throw new FileNotFoundException("Failed to rename document. Renamed failed.");
-            }
-        } catch (Exception e) {
-            Log.w(TAG, "Rename exception : " + e.getLocalizedMessage() + e.getCause());
-            throw new FileNotFoundException("Failed to rename document. Error: " + e.getMessage());
-        }
+        String parentDocumentId = getParent(documentId);
+        notifyChange(parentDocumentId);
 
-        return getDocIdForFile(destFile);
+        return newName;
     }
     // END_INCLUDE(rename_document)
-*/
+
 
     // BEGIN_INCLUDE(delete_document)
     @Override
@@ -548,7 +534,7 @@ public class MyCloudProvider extends DocumentsProvider {
     public void removeDocument(String documentId, String parentDocumentId)
             throws FileNotFoundException {
         Log.v(TAG, "removeDocument " + documentId + " " + parentDocumentId);
-
+        deleteDocument(documentId);
         notifyChange(parentDocumentId);
     }
     // END_INCLUDE(remove_document)

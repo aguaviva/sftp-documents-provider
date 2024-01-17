@@ -218,14 +218,14 @@ public class SFTP extends SFTP_Auth{
     }
 
     public int cp(String source, String target) {
-        String command = String.format("cp `%s` `%s`", connection.root + source, connection.root + target);
-        return Ssh2.exec(ssh2_session_id, command);
+        String command = String.format("cp %s %s", connection.root + source, connection.root + target);
+        return exec(command);
     }
 
     public int rm(String file) {
         String path = connection.root + file;
         String command = String.format("rm %s", path.replace(" ", "\\ ").replace("\"", "\\\""));
-        return Ssh2.exec(ssh2_session_id, command);
+        return exec(command);
     }
 
 }
