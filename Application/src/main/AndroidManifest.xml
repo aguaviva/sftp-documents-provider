@@ -33,6 +33,9 @@
             android:name=".ActivityFormConnection"
             android:exported="false" />
         <activity
+            android:name=".ActivityTestConnection"
+            android:exported="false" />
+        <activity
             android:name=".ActivityListKeys"
             android:exported="false" />
         <activity

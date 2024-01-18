@@ -7,8 +7,9 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
-
+import com.aguaviva.android.libssh2.helpers;
 import androidx.fragment.app.FragmentActivity;
+
 
 public class ActivityListKeys extends FragmentActivity {
 
@@ -23,7 +24,7 @@ public class ActivityListKeys extends FragmentActivity {
     }
 
     private void rebuildKeysList() {
-        ArrayAdapter<String> arrayAdapter= helpers.populateListView(this, "+ Add Keys", helpers.getFilesKeys() );
+        ArrayAdapter<String> arrayAdapter= utils.populateListView(this, "+ Add Keys", helpers.getFilesKeys() );
         simpleList.setAdapter(arrayAdapter);
         simpleList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override

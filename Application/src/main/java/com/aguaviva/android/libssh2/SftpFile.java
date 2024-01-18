@@ -80,6 +80,7 @@ public class SftpFile {
     public int read(byte[] buffer, int length) throws IOException {
         int offset = 0;
         synchronized (lock) {
+            long time_start = System.currentTimeMillis();
             while (length > 0) {
                 int bytes_read = Ssh2.readfile(sftp_handle_id, buffer, offset, length);
                 if (bytes_read < 0) {
@@ -91,6 +92,9 @@ public class SftpFile {
                 offset += bytes_read;
                 length -= bytes_read;
             }
+            long time_end = System.currentTimeMillis();
+            float time_delta = ((float)(time_end - time_start))/1000.0f;
+            Log.i(TAG, String.format("%s %7.2f Kb/s", filename.substring(Math.max(0,filename.lastIndexOf("/"))), (offset/1024.0)/time_delta ));
         }
 
         bytes_read += offset;

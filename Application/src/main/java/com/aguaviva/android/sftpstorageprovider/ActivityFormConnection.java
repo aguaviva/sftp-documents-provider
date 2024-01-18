@@ -2,12 +2,8 @@ package com.aguaviva.android.sftpstorageprovider;
 
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.icu.text.SimpleDateFormat;
-import android.net.Uri;
 import android.os.Bundle;
 import android.provider.DocumentsContract;
-import android.util.Base64;
-import android.util.Log;
 import android.view.View;
 import android.widget.Adapter;
 import android.widget.ArrayAdapter;
@@ -18,18 +14,13 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.aguaviva.android.libssh2.Ssh2;
-
 import androidx.fragment.app.FragmentActivity;
-
+import com.aguaviva.android.libssh2.Connection;
+import com.aguaviva.android.libssh2.helpers;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.time.format.DateTimeFormatter;
-import java.util.Date;
 
 public class ActivityFormConnection extends FragmentActivity {
 
@@ -56,7 +47,7 @@ public class ActivityFormConnection extends FragmentActivity {
         keyList = (Spinner)findViewById(R.id.spinnerKeys);
         textTerminal = (TextView)findViewById(R.id.textTerminal);
         scrollView = (ScrollView)findViewById(R.id.scrollView);
-        ArrayAdapter<String> arrayAdapter= helpers.populateListView(this, "None", helpers.getFilesKeys() );
+        ArrayAdapter<String> arrayAdapter= utils.populateListView(this, "None", helpers.getFilesKeys() );
         keyList.setAdapter(arrayAdapter);
 
         // gets the previously created intent
@@ -79,92 +70,9 @@ public class ActivityFormConnection extends FragmentActivity {
         buttonCheckConnection.setOnClickListener(new View.OnClickListener() {
             public void onClick(View view) {
 
-                buttonCheckConnection.setActivated(false);
-
-                new Thread() {
-                    @Override
-                    public void run() {
-                        String username = editUsername.getText().toString();
-                        String hostname = editHostname.getText().toString();
-                        int port = -1;
-                        try {
-                            port = Integer.parseInt(editPort.getText().toString());
-                        } catch (NumberFormatException e) {
-                            logTerminal(String.format("Error, port should be an integer\n"));
-                            return;
-                        }
-
-                        String root = editRoot.getText().toString();
-                        String keyname = keyList.getSelectedItem().toString();
-                        if (keyList.getSelectedItemPosition()== keyList.getAdapter().getCount()-1) {
-                            logTerminal(String.format("Error, please select a key\n"));
-                            return;
-                        }
-
-                        try {
-                            String hostip = InetAddress.getByName(hostname).getHostAddress();
-                            logTerminal(String.format("Resolved %s -> %s\n", hostname, hostip));
-
-                            int session_id = Ssh2.session_connect(hostip, port);
-                            if (session_id>=0) {
-                                String banner = Ssh2.session_get_banner(session_id);
-                                logTerminal(String.format("Banner: `%s`\n", banner));
-
-                                byte[] hash = Ssh2.get_host_key_hash(session_id);
-                                String fingerprint = new String(Base64.encode(hash, hash.length));
-                                logTerminal(String.format("Fingerprint SHA256: %s", fingerprint));
-
-                                int res = Ssh2.session_auth(session_id, username, getFilesDir() + helpers.GetPublicKeyPath(keyname), getFilesDir() + helpers.GetPrivateKeyPath(keyname), "");
-                                if (res >= 0) {
-                                    int ssh2_sftp_session = Ssh2.sftp_init(session_id);
-                                    if (ssh2_sftp_session >= 0) {
-
-                                        SimpleDateFormat formatter = new SimpleDateFormat("yyyy.MM.dd HH:mm");
-
-                                        int sftp_handle_id = Ssh2.opendir(ssh2_sftp_session, root);
-                                        if (sftp_handle_id >= 0) {
-                                            while (true) {
-                                                String entry = Ssh2.readdir(sftp_handle_id);
-                                                if (entry.equals("")) {
-                                                    break;
-                                                } else {
-                                                    String[] fields = entry.split(" ",4);
-                                                    String permissions = fields[0];
-                                                    String date = formatter.format(new Date(Long.parseLong(fields[1]) * 1000));
-                                                    long filesize = Long.parseLong(fields[2]);
-                                                    String filename = fields[3];
-
-                                                    logTerminal(String.format("%s %s %d %s\n", permissions, date, filesize, filename));
-                                                }
-                                            }
-                                            Ssh2.closedir(sftp_handle_id);
-                                        } else {
-                                            logTerminal(String.format("Error, can't opendir %s\n", root));
-                                            logTerminal(String.format("Details: %s\n", Ssh2.session_last_error(session_id)));
-                                        }
-                                        Ssh2.sftp_shutdown(ssh2_sftp_session);
-                                    }
-                                } else {
-                                    logTerminal(String.format("Error, can't auth: %s\n", Ssh2.session_last_error(session_id)));
-                                }
-
-                            } else {
-                                logTerminal(String.format("Error, can't connect to %s:%d\n", hostname, port));
-                            }
-                            Ssh2.session_disconnect(session_id);
-
-                        } catch (UnknownHostException e) {
-                            logTerminal(String.format("Can't resolve %s\n", hostname));
-                        }
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                buttonCheckConnection.setActivated(true);
-                            }
-                        });
-                        logTerminal(String.format("OK!\n"));
-                    }
-                }.start();
+                Intent myIntent = new Intent(ActivityFormConnection.this, ActivityTestConnection.class);
+                myIntent.putExtra("connection_name", connectionName);
+                startActivityForResult(myIntent, 0);
             }
         });
 
@@ -173,7 +81,7 @@ public class ActivityFormConnection extends FragmentActivity {
             @Override
             public void onClick(View view) {
                 try {
-                    helpers.saveConnectionString(editConnectionName.getText().toString(), UiToJson());
+                    helpers.saveConnection(editConnectionName.getText().toString(), UiToJson());
                     getContentResolver().notifyChange(DocumentsContract.buildRootsUri(BuildConfig.DOCUMENTS_AUTHORITY), null);
                     finish();
                 } catch (IOException e) {
@@ -224,17 +132,17 @@ public class ActivityFormConnection extends FragmentActivity {
         });
     }
 
-    public String UiToJson() throws JSONException {
-        JSONObject jsonObject = new JSONObject();
-        jsonObject.put("hostname", editHostname.getText());
-        jsonObject.put("username", editUsername.getText());
-        jsonObject.put("port", Integer.parseInt(editPort.getText().toString()));
-        jsonObject.put("root", editRoot.getText().toString());
+    public Connection UiToJson() throws JSONException {
+        Connection c = new Connection();
+        c.hostname = editHostname.getText().toString();
+        c.username = editUsername.getText().toString();
+        c.port = Integer.parseInt(editPort.getText().toString());
+        c.root = editRoot.getText().toString();
         if (keyList.getSelectedItemPosition()!= keyList.getAdapter().getCount()-1) {
             String selectedKeyName = keyList.getSelectedItem().toString();
-            jsonObject.put("keyname", selectedKeyName);
+            c.keyname = selectedKeyName;
         }
-        return  jsonObject.toString();
+        return  c;
     }
 
     public void JsonToUI(String json) throws JSONException {

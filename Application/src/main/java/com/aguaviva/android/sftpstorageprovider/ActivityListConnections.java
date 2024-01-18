@@ -29,6 +29,7 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
+import com.aguaviva.android.libssh2.helpers;
 
 
 /**
@@ -59,7 +60,7 @@ public class ActivityListConnections extends FragmentActivity {
 
     private void rebuildConnectionsList() {
         ListView simpleList = (ListView)findViewById(R.id.list_view);
-        ArrayAdapter<String> arrayAdapter= helpers.populateListView(this, "+ Add Connections", helpers.getFilesConnections() );
+        ArrayAdapter<String> arrayAdapter= utils.populateListView(this, "+ Add Connections", helpers.getFilesConnections() );
         simpleList.setAdapter(arrayAdapter);
         simpleList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override

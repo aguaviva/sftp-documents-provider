@@ -9,6 +9,7 @@ import android.widget.EditText;
 import android.widget.Toast;
 
 import androidx.fragment.app.FragmentActivity;
+import com.aguaviva.android.libssh2.helpers;
 
 import java.io.IOException;
 

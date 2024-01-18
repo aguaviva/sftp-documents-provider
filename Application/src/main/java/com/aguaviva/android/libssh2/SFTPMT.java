@@ -14,7 +14,7 @@ public class SFTPMT {
     private static final int TASK_GET = 2;
     private static final int TASK_LS = 3;
     private static final int TASK_EXIT = 3;
-    Thread[] threads;
+    Thread[] workers;
 
     protected class SftpTask
     {
@@ -47,11 +47,12 @@ public class SFTPMT {
 
         @Override
         public void run() {
-            while (true) {
-                try {
+
+            try {
+                while (true) {
                     SftpTask element = (SftpTask) queue.take();
 
-                    String op = (element.type == TASK_GET)?"get":"put";
+                    String op = (element.type == TASK_GET)?"get":(element.type == TASK_PUT)?"put":(element.type == TASK_LS)?"ls":"exit";
 
                     Log.i(TAG, String.format("w %d begin %s: %s", id, op, element.documentId));
 
@@ -68,28 +69,30 @@ public class SFTPMT {
                     }
 
                     Log.i(TAG, String.format("w %d end %s: %s", id, op, element.documentId));
-
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
                 }
+            } catch (InterruptedException e) {
+                //e.printStackTrace();
+                sftp.Disconnect();
             }
         }
     }
 
-    public boolean Init(Connection connection, int numThreads) {
+    public boolean Connect(Connection connection, int numThreads) {
+
+        workers = new Thread[numThreads];
 
         // open connections in parallel
-        threads = new Thread[numThreads];
+        Thread[] threads = new Thread[numThreads];
         for (int i = 0; i < numThreads; i++) {
             final int finalI = i;
             threads[finalI] = new Thread() {
                 @Override
                 public void run() {
                     SFTP sftp = new SFTP_retry();
-                    sftp.Connect(connection);
+                    sftp.Connect(connection, true);
 
-                    Thread worker = new Thread(new TaskConsumer(finalI, sftp, arrayQueue));
-                    worker.start();
+                    workers[finalI] = new Thread(new TaskConsumer(finalI, sftp, arrayQueue));
+                    workers[finalI].start();
                 }
             };
             threads[finalI].start();
@@ -105,6 +108,13 @@ public class SFTPMT {
         }
 
         return true;
+    }
+
+    public void Disconnect() {
+
+        for(int i=0;i<workers.length;i++) {
+            workers[i].interrupt();
+        }
     }
 
     public void get(String documentId, ParcelFileDescriptor parcelFileDescriptor) throws InterruptedException {

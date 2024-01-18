@@ -1,27 +1,17 @@
-package com.aguaviva.android.sftpstorageprovider;
+package com.aguaviva.android.libssh2;
 
-import android.app.Activity;
-import android.content.ContentResolver;
 import android.content.Context;
-import android.net.Uri;
 import android.util.Log;
-import android.widget.ArrayAdapter;
-
-import com.aguaviva.android.libssh2.Connection;
 
 import org.json.JSONException;
-import org.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileFilter;
-import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.regex.Pattern;
 
 public class helpers {
@@ -30,10 +20,10 @@ public class helpers {
     static String keysDir = "/.ssh";
     static String connectionsDir = "/connections";
 
-    static void Init(Context context) {
+    static public void Init(Context context) {
         filesDir = context.getFilesDir();
-        helpers.createDir(filesDir+keysDir);
-        helpers.createDir(filesDir+connectionsDir);
+        helpers.createDir(filesDir + keysDir);
+        helpers.createDir(filesDir + connectionsDir);
     }
 
     static public String loadString(String filename) throws IOException {
@@ -90,31 +80,19 @@ public class helpers {
         return directory.listFiles(fileFilter);
     }
 
-    static public ArrayAdapter<String> populateListView(Activity activity, String categoryName, File[] files) {
-
-        String[] connectionList = new String[(categoryName == null) ? files.length : files.length + 1];
-        for (int i = 0; i < files.length; i++) {
-            connectionList[i] = files[i].getName();
-        }
-        if (categoryName != null)
-            connectionList[files.length] = categoryName;
-
-        return new ArrayAdapter<String>(activity, android.R.layout.simple_list_item_1, connectionList);
-    }
-
     // keys
 
-    static File[] getFilesKeys() {
+    static public File[] getFilesKeys() {
         return getFiles(keysDir, "^.*\\.(?!pub$)[^.]+$");
     }
 
-    static void saveKeys(String keyname, String pubKeyFilename, String privKeyFilename) throws IOException {
+    static public void saveKeys(String keyname, String pubKeyFilename, String privKeyFilename) throws IOException {
         String filename = keysDir + "/" + keyname;
         helpers.saveString(filename, privKeyFilename);
         helpers.saveString(filename + ".pub", pubKeyFilename);
     }
 
-    static void deleteKeys(String keyname) {
+    static public void deleteKeys(String keyname) {
         String filename = filesDir + keysDir + "/" + keyname;
         File filePriv = new File(filename);
         filePriv.delete();
@@ -122,7 +100,7 @@ public class helpers {
         filePub.delete();
     }
 
-    static String GetPublicKeyPath(String keyname) {
+    public static String GetPublicKeyPath(String keyname) {
         return keysDir + "/" + keyname + ".pub";
     }
 
@@ -130,51 +108,49 @@ public class helpers {
         return keysDir + "/" + keyname;
     }
 
-    static String loadPublicKey(String keyname) throws IOException {
+    public static String loadPublicKey(String keyname) throws IOException {
         return helpers.loadString(GetPublicKeyPath(keyname));
     }
 
-    static String loadPrivateKey(String keyname) throws IOException {
+    public static String loadPrivateKey(String keyname) throws IOException {
         return helpers.loadString(GetPrivateKeyPath(keyname));
     }
 
     // connections
 
-    static File[] getFilesConnections() {
+    static public File[] getFilesConnections() {
         return getFiles(connectionsDir, ".+");
     }
 
-    static String loadConnectionString(String connectionName) throws IOException {
+    static public String loadConnectionString(String connectionName) throws IOException {
         return loadString(connectionsDir + "/" + connectionName);
     }
 
-    static void saveConnectionString(String connectionName, String jsonData) throws IOException {
+    static public void saveConnectionString(String connectionName, String jsonData) throws IOException {
         saveString(connectionsDir + "/" + connectionName, jsonData);
     }
 
-    static void deleteConnection(String connectionName) {
+    static public void deleteConnection(String connectionName) {
         String keyname = filesDir + connectionsDir + "/" + connectionName;
         File filePriv = new File(keyname);
         filePriv.delete();
     }
 
-    static Connection loadConnection(String connectionName) throws IOException, JSONException {
-        String jsonData = loadConnectionString(connectionName);
-
+    static public Connection loadConnection(String connectionName) throws IOException, JSONException {
         Connection c = new Connection();
-
-        JSONObject jsonObject = new JSONObject(jsonData);
-        c.hostname = jsonObject.get("hostname").toString();
-        c.username = jsonObject.get("username").toString();
-        c.port = jsonObject.getInt("port");
-        c.root = jsonObject.get("root").toString();
-
-        String keyname = jsonObject.get("keyname").toString();
-        c.pubKeyFilename = filesDir + GetPublicKeyPath(keyname);
-        c.privKeyFilename =  filesDir + GetPrivateKeyPath(keyname);
-
+        c.loadJson(loadConnectionString(connectionName));
         return c;
     }
 
+    static public void saveConnection(String connectionName, Connection connection) throws IOException, JSONException {
+        saveConnectionString(connectionName, connection.toJsonString());
+    }
 
+    static public String GetPublicKeyFilename(String keyname){
+        return filesDir + GetPublicKeyPath(keyname);
+    }
+
+    static public String GetPrivateKeyFilename(String keyname){
+        return filesDir + GetPrivateKeyPath(keyname);
+    }
 }

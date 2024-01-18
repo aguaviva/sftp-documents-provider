@@ -44,7 +44,11 @@ public class SftpSession {
     }
 
     public boolean Connect(Connection connection) {
-        return session.Connect(connection);
+        return session.Connect(connection, true);
+    }
+
+    public void Disconnect() {
+        session.Disconnect();
     }
 
     public ParcelFileDescriptor GetParcelFileDescriptor(StorageManager storageManager, String filename, String mode) throws IOException {

@@ -19,7 +19,7 @@ public class SFTP_retry extends SFTP {
             Log.e(TAG, "* get retrying" + super.getLastError() + " " + String.valueOf(getSftpLastError()));
 
             Disconnect();
-            Connect(this.connection);
+            Connect(this.connection, true);
         }
         Log.e(TAG, "* get gave up" + super.getLastError());
         return res;
@@ -34,7 +34,7 @@ public class SFTP_retry extends SFTP {
                 return res;
             Log.e(TAG, "* put retrying" + super.getLastError() + " " + String.valueOf(getSftpLastError()));
             Disconnect();
-            Connect(this.connection);
+            Connect(this.connection, true);
         }
         Log.e(TAG, "* put gave up" + super.getLastError());
         return res;
@@ -51,7 +51,7 @@ public class SFTP_retry extends SFTP {
             Log.e(TAG, "* ls retrying" + super.getLastError() + " " + String.valueOf(getSftpLastError()));
 
             Disconnect();
-            Connect(this.connection);
+            Connect(this.connection, true);
         }
 
         Log.e(TAG, "* ls gaveup" + super.getLastError());
@@ -68,7 +68,7 @@ public class SFTP_retry extends SFTP {
 
             Log.e(TAG, String.format("* Stat retrying %d/%d. Err: '%s' code: %d", i, num_retries, getLastError(), getSftpLastError()));
             Disconnect();
-            Connect(this.connection);
+            Connect(this.connection, true);
         }
         Log.e(TAG, String.format("* Stat gave up. Err: '%s' code: %d", super.getLastError(), getSftpLastError()));
         return str;

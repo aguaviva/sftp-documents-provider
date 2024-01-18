@@ -23,15 +23,10 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.MatrixCursor;
-import android.icu.text.SimpleDateFormat;
-import android.net.Uri;
-import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.CancellationSignal;
-import android.os.Handler;
 import android.os.Looper;
-import android.os.Message;
 import android.os.ParcelFileDescriptor;
 import android.os.storage.StorageManager;
 import android.provider.DocumentsContract;
@@ -46,6 +41,7 @@ import com.aguaviva.android.libssh2.SFTP;
 import com.aguaviva.android.libssh2.SFTPMT;
 import com.aguaviva.android.libssh2.SFTP_retry;
 import com.aguaviva.android.libssh2.SftpSession;
+import com.aguaviva.android.libssh2.helpers;
 import com.aguaviva.android.libssh2.Ssh2;
 //import com.example.android.common.logger.Log;
 
@@ -59,9 +55,6 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import android.os.Looper;
 
 /**
  * Manages documents and exposes them to the Android system for sharing.
@@ -156,14 +149,20 @@ public class MyCloudProvider extends DocumentsProvider {
             throw new RuntimeException(e);
         }
         Log.i(TAG, String.format("Resolved %s", connection.hostname));
-        sftp_client_mt.Init(connection, 1);
+        sftp_client_mt.Connect(connection, 1);
 
-        sftp_client.Connect(connection);
+        sftp_client.Connect(connection, true);
         sftp_session.Connect(connection);
 
         Log.i(TAG, String.format("Connecting End"));
 
         currentConnectionName = connectionName;
+    }
+
+    void disconnect() {
+        sftp_session.Disconnect();
+        sftp_client.Disconnect();
+        sftp_client_mt.Disconnect();
     }
 
     private MatrixCursor connectingMatrixCursor(String documentId) {
@@ -192,15 +191,16 @@ public class MyCloudProvider extends DocumentsProvider {
             }
 
             String connectionName = getConnectionNameFrom(documentId);
-            if (currentConnectionName.startsWith(connectionName) == false)
+            if (currentConnectionName.startsWith(connectionName) == false) {
+                if (currentConnectionName.equals("")==false)
+                    disconnect();
                 ssh_state = SSH_DISCONNECTED;
+            }
 
             if (ssh_state == SSH_CONNECTED)
                 return null;
 
             ssh_state = SSH_CONNECTING;
-
-            cache_ls.clear();
 
             MatrixCursor result = connectingMatrixCursor(documentId);
 
@@ -213,12 +213,6 @@ public class MyCloudProvider extends DocumentsProvider {
             }.start();
 
             return result;
-        }
-    }
-
-    private boolean needsReconnect(String parentDocumentId) {
-        synchronized (sftp_client_mt) {
-            return (currentConnectionName.equals("") || currentConnectionName.startsWith(getConnectionNameFrom(parentDocumentId)) == false);
         }
     }
 

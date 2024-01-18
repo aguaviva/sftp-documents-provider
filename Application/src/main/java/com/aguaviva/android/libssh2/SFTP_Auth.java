@@ -1,5 +1,6 @@
 package com.aguaviva.android.libssh2;
 
+import android.util.Base64;
 import android.util.Log;
 
 public class SFTP_Auth {
@@ -7,7 +8,8 @@ public class SFTP_Auth {
     public int ssh2_session_id = -1;
     public int ssh2_sftp_session = -1;
     Connection connection;
-    public boolean Connect(Connection connection) {
+
+    public boolean Connect(Connection connection, boolean autenticate) {
         // bail out if already connected
         if (ssh2_session_id >= 0) {
             if ((this.connection.hostname != null) && connection.hostname.equals(this.connection.hostname)) {
@@ -21,46 +23,90 @@ public class SFTP_Auth {
         this.connection = connection;
 
         ssh2_session_id = Ssh2.session_connect(connection.hostname, connection.port);
-        if (ssh2_session_id>=0) {
+        if (ssh2_session_id < 0) {
+            Log.e(TAG, String.format("Error session_connect %s", getLastError()));
+            return false;
+        }
 
-            int res = Ssh2.session_auth(ssh2_session_id, connection.username, connection.pubKeyFilename, connection.privKeyFilename, "");
-            if (res == 0) {
-                ssh2_sftp_session = Ssh2.sftp_init(ssh2_session_id);
-                if(ssh2_sftp_session>=0)
-                {
-                    Log.i(TAG, String.format("Transfer connected ssh2:%d sftp:%d", ssh2_session_id, ssh2_sftp_session));
-                    int blocking = Ssh2.session_get_blocking(ssh2_session_id);
-                    Ssh2.session_set_blocking(ssh2_session_id, 1);
+        int blocking = Ssh2.session_get_blocking(ssh2_session_id);
+        Ssh2.session_set_blocking(ssh2_session_id, 1);
 
-                    return true;
-                }
+        if (autenticate) {
+            if (Auth()) {
+                return true;
+            } else {
+                Disconnect();
+                return false;
             }
-
-            Log.e(TAG, String.format("Error session_auth %s", getLastError()));
-            Ssh2.session_disconnect(ssh2_session_id);
-            ssh2_session_id = -1;
         }
-
-        Log.e(TAG, String.format("Error session_connect %s", getLastError()));
-        return false;
-    }
-
-
-    public boolean Disconnect() {
-        if ((ssh2_sftp_session>=0) && (Ssh2.sftp_shutdown(ssh2_sftp_session) != 0)) {
-            Log.w(TAG, "Failed sftp_shutdown " + ssh2_sftp_session + " " + getLastError());
-            //return false;
-        }
-        ssh2_sftp_session = -1;
-
-        if ((ssh2_session_id>=0) && (Ssh2.session_disconnect(ssh2_session_id) != 0)) {
-            Log.w(TAG, "Failed sftp_shutdown " + ssh2_session_id);
-            //return false;
-        }
-        ssh2_session_id = -1;
 
         return true;
     }
+
+    public boolean Disconnect() {
+
+        sftp_shutdown();
+
+        if (ssh2_session_id<0) {
+            Log.w(TAG, "Error session_disconnect: Already disconnected");
+            return false;
+        }
+
+        ssh2_session_id = -1;
+
+        if (Ssh2.session_disconnect(ssh2_session_id) <0) {
+            Log.w(TAG, "Error session_disconnect " + ssh2_session_id);
+            return false;
+        }
+
+        return true;
+    }
+
+    public String GetFingerprint() {
+        byte[] hash = Ssh2.get_host_key_hash(ssh2_session_id);
+        String fingerprint = new String(Base64.encode(hash, hash.length));
+        return fingerprint;
+    }
+
+    public boolean Auth() {
+        String pubKeyPath = helpers.GetPublicKeyFilename(connection.keyname);
+        String privKeyPath = helpers.GetPrivateKeyFilename(connection.keyname);
+        int res = Ssh2.session_auth(ssh2_session_id, connection.username, pubKeyPath, privKeyPath, "");
+        if (res < 0) {
+            Log.e(TAG, String.format("Error auth %s", getLastError()));
+            return false;
+        }
+
+        if (sftp_init()==false) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private boolean sftp_init() {
+        ssh2_sftp_session = Ssh2.sftp_init(ssh2_session_id);
+        if (ssh2_sftp_session < 0) {
+            Log.i(TAG, String.format("Error sftp_init:", getLastError()));
+            return false;
+        }
+        return true;
+    }
+
+    private boolean sftp_shutdown() {
+        if (ssh2_sftp_session < 0) {
+            Log.w(TAG, "Error sftp_shutdown: Already shutdown");
+            return false;
+        }
+
+        ssh2_sftp_session = -1;
+        if (Ssh2.sftp_shutdown(ssh2_sftp_session) < 0) {
+            Log.w(TAG, "Error sftp_shutdown " + ssh2_sftp_session + " " + getLastError());
+            return false;
+        }
+        return true;
+    }
+
 
     public String getLastError() {
         return Ssh2.session_last_error(ssh2_session_id);
