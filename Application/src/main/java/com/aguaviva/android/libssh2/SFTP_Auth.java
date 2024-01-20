@@ -3,13 +3,19 @@ package com.aguaviva.android.libssh2;
 import android.util.Base64;
 import android.util.Log;
 
+import org.json.JSONException;
+
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+
 public class SFTP_Auth {
     private static final String TAG = "MyCloudProvider-Auth";
     public int ssh2_session_id = -1;
     public int ssh2_sftp_session = -1;
     Connection connection;
 
-    public boolean Connect(Connection connection, boolean autenticate) {
+    public boolean Connect(Connection connection, boolean authenticate) {
         // bail out if already connected
         if (ssh2_session_id >= 0) {
             if ((this.connection.hostname != null) && connection.hostname.equals(this.connection.hostname)) {
@@ -31,7 +37,7 @@ public class SFTP_Auth {
         int blocking = Ssh2.session_get_blocking(ssh2_session_id);
         Ssh2.session_set_blocking(ssh2_session_id, 1);
 
-        if (autenticate) {
+        if (authenticate) {
             if (Auth()) {
                 return true;
             } else {
@@ -41,6 +47,31 @@ public class SFTP_Auth {
         }
 
         return true;
+    }
+
+    public boolean Connect(String connectionName, boolean authenticate) throws RuntimeException {
+        Log.i(TAG, String.format("Connecting Begin: %s", connectionName));
+
+        Connection connection;
+        try {
+            connection = helpers.loadConnection(connectionName);
+        } catch (JSONException e) {
+            throw new RuntimeException(e);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        Log.i(TAG, String.format("Resolving %s", connection.hostname));
+        try {
+            connection.hostname = InetAddress.getByName(connection.hostname).getHostAddress();
+        } catch (UnknownHostException e) {
+            throw new RuntimeException(e);
+        }
+        Log.i(TAG, String.format("Resolved %s", connection.hostname));
+
+        boolean res =  Connect(connection, authenticate);
+        Log.i(TAG, String.format("Connecting End: %s  res: %s", connectionName, res?"OK":"Error"));
+        return res;
     }
 
     public boolean Disconnect() {

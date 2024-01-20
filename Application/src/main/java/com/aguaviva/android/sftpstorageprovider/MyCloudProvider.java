@@ -115,38 +115,6 @@ public class MyCloudProvider extends DocumentsProvider {
     public static final int SSH_CONNECTING = 2;
     private int ssh_state = SSH_DISCONNECTED;
 
-    private void connect(String connectionName) {
-
-        Log.i(TAG, String.format("Connecting Begin %s", connectionName));
-
-        Connection connection;
-        try {
-            connection = helpers.loadConnection(connectionName);
-        } catch (JSONException e) {
-            throw new RuntimeException(e);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
-        Log.i(TAG, String.format("Resolving %s", connection.hostname));
-        try {
-            connection.hostname = InetAddress.getByName(connection.hostname).getHostAddress();
-        } catch (UnknownHostException e) {
-            throw new RuntimeException(e);
-        }
-        Log.i(TAG, String.format("Resolved %s", connection.hostname));
-
-        sftp_session.Connect(connection, true);
-
-        Log.i(TAG, String.format("Connecting End %s", connectionName));
-
-        currentConnectionName = connectionName;
-    }
-
-    void disconnect() {
-        sftp_session.Disconnect();
-    }
-
     private MatrixCursor connectingMatrixCursor(String documentId) {
         MatrixCursor result = new MatrixCursor(DEFAULT_DOCUMENT_PROJECTION) {
             public String extra_info = null;
@@ -173,9 +141,11 @@ public class MyCloudProvider extends DocumentsProvider {
             }
 
             String connectionName = getConnectionNameFrom(documentId);
-            if (currentConnectionName.startsWith(connectionName) == false) {
-                if (currentConnectionName.equals("")==false)
-                    disconnect();
+            if (currentConnectionName.equals(connectionName) == false) {
+                if (currentConnectionName.equals("")==false) {
+                    sftp_session.Disconnect();
+                    currentConnectionName = "";
+                }
                 ssh_state = SSH_DISCONNECTED;
             }
 
@@ -188,8 +158,9 @@ public class MyCloudProvider extends DocumentsProvider {
 
             new Thread() {
                 public void run() {
-                    connect(connectionName);
+                    sftp_session.Connect(connectionName, true);
                     ssh_state = SSH_CONNECTED;
+                    currentConnectionName = connectionName;
                     MyCloudProvider.this.getContext().getContentResolver().notifyChange(DocumentsContract.buildDocumentUri(BuildConfig.DOCUMENTS_AUTHORITY, documentId), null);
                 }
             }.start();
