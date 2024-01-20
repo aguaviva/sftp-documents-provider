@@ -39,9 +39,7 @@ public class ActivityTestConnection extends FragmentActivity {
 
         Thread thread = new Thread() {
             public void run() {
-                SFTP sftp = new SFTP();
-                test(sftp, connectionName);
-
+                test(connectionName);
             }
         };
         thread.start();
@@ -67,53 +65,54 @@ public class ActivityTestConnection extends FragmentActivity {
         });
     }
 
-    void test(SFTP sftp, String connectionName) {
+    void test(String connectionName) {
 
-            Connection connection;
+        Connection connection;
 
-            try {
-                connection = helpers.loadConnection(connectionName);
-            } catch (JSONException e) {
-                throw new RuntimeException(e);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+        try {
+            connection = helpers.loadConnection(connectionName);
+        } catch (JSONException e) {
+            throw new RuntimeException(e);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
 
-            logTerminal(String.format("Resolving %s\n", connection.hostname));
-            try {
-                connection.hostname = InetAddress.getByName(connection.hostname).getHostAddress();
-            } catch (UnknownHostException e) {
-                logTerminal("Can't resolve\n");
-                return;
-            }
-            logTerminal(String.format("Resolved %s\n", connection.hostname));
+        logTerminal(String.format("Resolving %s\n", connection.hostname));
+        try {
+            connection.hostname = InetAddress.getByName(connection.hostname).getHostAddress();
+        } catch (UnknownHostException e) {
+            logTerminal("Can't resolve\n");
+            return;
+        }
+        logTerminal(String.format("Resolved %s\n", connection.hostname));
+        SFTP sftp = new SFTP();
 
-            if (sftp.Connect(connection, false)) {
-                logTerminal(String.format("Connected\n"));
+        if (sftp.Connect(connection, false)) {
+            logTerminal(String.format("Connected\n"));
 
-                logTerminal(String.format("Fingerprint: %s\n", sftp.GetFingerprint()));
+            logTerminal(String.format("Fingerprint: %s\n", sftp.GetFingerprint()));
 
-                if (sftp.Auth()) {
-                    sftp.ls("/", new SFTP.onGetFileListener() {
-                        @Override
-                        public boolean listen(String file) {
-                            logTerminal(String.format("%s\n", file));
-                            return true;
-                        }
+            if (sftp.Auth()) {
+                sftp.ls("/", new SFTP.onGetFileListener() {
+                    @Override
+                    public boolean listen(String file) {
+                        logTerminal(String.format("%s\n", file));
+                        return true;
+                    }
 
-                        @Override
-                        public void done() {
+                    @Override
+                    public void done() {
 
-                        }
-                    });
+                    }
+                });
 
-                    logTerminal("OK\n");
-                } else {
-                    logTerminal(String.format("Can't authenticate, bad username or keys\n"));
-                }
-                sftp.Disconnect();
+                logTerminal("OK\n");
             } else {
-                logTerminal(String.format("Can't connect\n"));
+                logTerminal(String.format("Can't authenticate, bad username or keys\n"));
             }
+            sftp.Disconnect();
+        } else {
+            logTerminal(String.format("Can't connect\n"));
+        }
     }
 }

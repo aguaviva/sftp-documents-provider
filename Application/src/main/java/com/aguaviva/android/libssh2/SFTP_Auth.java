@@ -13,7 +13,7 @@ public class SFTP_Auth {
         // bail out if already connected
         if (ssh2_session_id >= 0) {
             if ((this.connection.hostname != null) && connection.hostname.equals(this.connection.hostname)) {
-                Log.i(TAG, String.format("Already connected ", ssh2_session_id, ssh2_sftp_session));
+                Log.i(TAG, String.format("Already connected %d %d", ssh2_session_id, ssh2_sftp_session));
                 return true;
             } else {
                 Disconnect();
@@ -87,7 +87,7 @@ public class SFTP_Auth {
     private boolean sftp_init() {
         ssh2_sftp_session = Ssh2.sftp_init(ssh2_session_id);
         if (ssh2_sftp_session < 0) {
-            Log.i(TAG, String.format("Error sftp_init:", getLastError()));
+            Log.i(TAG, String.format("Error sftp_init: %s", getLastError()));
             return false;
         }
         return true;
@@ -107,7 +107,7 @@ public class SFTP_Auth {
         return true;
     }
 
-
+    public String getRoot() { return connection.root; }
     public String getLastError() {
         return Ssh2.session_last_error(ssh2_session_id);
     }

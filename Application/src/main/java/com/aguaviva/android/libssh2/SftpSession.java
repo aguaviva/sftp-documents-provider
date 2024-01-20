@@ -2,6 +2,7 @@ package com.aguaviva.android.libssh2;
 
 import static android.os.Build.VERSION.SDK_INT;
 
+import android.content.Context;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
@@ -11,8 +12,7 @@ import android.os.storage.StorageManager;
 
 import java.io.IOException;
 
-public class SftpSession {
-    SFTP_Auth session = new SFTP_Auth();
+public class SftpSession extends SFTP {
 
     static class BaseHandler extends Handler {
 
@@ -43,18 +43,10 @@ public class SftpSession {
         });
     }
 
-    public boolean Connect(Connection connection) {
-        return session.Connect(connection, true);
-    }
+    public ParcelFileDescriptor GetParcelFileDescriptor(Context context, StorageManager storageManager, String filename, String mode) throws IOException {
 
-    public void Disconnect() {
-        session.Disconnect();
-    }
-
-    public ParcelFileDescriptor GetParcelFileDescriptor(StorageManager storageManager, String filename, String mode) throws IOException {
-        SftpFile mFile = new SftpFile();
-        mFile.open(session.ssh2_sftp_session, session.connection.root + filename, mode, this);
-        SftpProxyFileDescriptorCallback fd =  new SftpProxyFileDescriptorCallback(mFile);
+        SftpFile mFile = this.getFileHandler(filename, mode);
+        SftpProxyFileDescriptorCallback fd =  new SftpProxyFileDescriptorCallback(mFile, context);
 
         if (SDK_INT >= Build.VERSION_CODES.O) {
             return storageManager.openProxyFileDescriptor(

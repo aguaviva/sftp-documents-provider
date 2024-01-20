@@ -38,8 +38,6 @@ import android.webkit.MimeTypeMap;
 
 import com.aguaviva.android.libssh2.Connection;
 import com.aguaviva.android.libssh2.SFTP;
-import com.aguaviva.android.libssh2.SFTPMT;
-import com.aguaviva.android.libssh2.SFTP_retry;
 import com.aguaviva.android.libssh2.SftpSession;
 import com.aguaviva.android.libssh2.helpers;
 import com.aguaviva.android.libssh2.Ssh2;
@@ -87,19 +85,14 @@ public class MyCloudProvider extends DocumentsProvider {
     };
 
     String currentConnectionName = "";
-    private SFTP sftp_client = null;
-    private SFTPMT sftp_client_mt = null;
     private SftpSession sftp_session = null;
     private StorageManager mStorageManager;
 
     class CacheEntry {
-        public List<String> files = new ArrayList<String>();
+        public List<String> files = new ArrayList<>();
         public boolean loading = true;
-
     }
-    ConcurrentHashMap<String, CacheEntry> cache_ls = new ConcurrentHashMap<String, CacheEntry>();
-
-
+    ConcurrentHashMap<String, CacheEntry> cache_ls = new ConcurrentHashMap<>();
 
     @Override
     public boolean onCreate() {
@@ -110,12 +103,6 @@ public class MyCloudProvider extends DocumentsProvider {
         helpers.Init(getContext());
 
         Ssh2.init_ssh();
-
-        if (sftp_client==null)
-            sftp_client = new SFTP_retry();
-
-        if (sftp_client_mt==null)
-            sftp_client_mt = new SFTPMT();
 
         if (sftp_session==null)
             sftp_session = new SftpSession(Looper.getMainLooper());
@@ -129,11 +116,10 @@ public class MyCloudProvider extends DocumentsProvider {
     private int ssh_state = SSH_DISCONNECTED;
 
     private void connect(String connectionName) {
-        int port = -1;
-        Log.i(TAG, String.format("Connecting Begin "));
+
+        Log.i(TAG, String.format("Connecting Begin %s", connectionName));
 
         Connection connection;
-
         try {
             connection = helpers.loadConnection(connectionName);
         } catch (JSONException e) {
@@ -149,20 +135,16 @@ public class MyCloudProvider extends DocumentsProvider {
             throw new RuntimeException(e);
         }
         Log.i(TAG, String.format("Resolved %s", connection.hostname));
-        sftp_client_mt.Connect(connection, 1);
 
-        sftp_client.Connect(connection, true);
-        sftp_session.Connect(connection);
+        sftp_session.Connect(connection, true);
 
-        Log.i(TAG, String.format("Connecting End"));
+        Log.i(TAG, String.format("Connecting End %s", connectionName));
 
         currentConnectionName = connectionName;
     }
 
     void disconnect() {
         sftp_session.Disconnect();
-        sftp_client.Disconnect();
-        sftp_client_mt.Disconnect();
     }
 
     private MatrixCursor connectingMatrixCursor(String documentId) {
@@ -342,12 +324,7 @@ public class MyCloudProvider extends DocumentsProvider {
                 {
                     MatrixCursor result = new MatrixCursor(resolveDocumentProjection(projection));
 
-                    String entry  = sftp_client.stat(getRemotePath(documentId));
-                    if (entry.startsWith("*")) {
-                        Log.e(TAG, String.format("sftp_stat %s: %s\n", documentId, entry));
-                        Log.e(TAG, "Error " + sftp_client.getLastError());
-                    }
-
+                    String entry  = sftp_session.stat(getRemotePath(documentId));
                     includeFile(result, getParent(documentId), entry + " " + getFilename(documentId));
 
                     result.setNotificationUri(getContext().getContentResolver(), DocumentsContract.buildDocumentUri(BuildConfig.DOCUMENTS_AUTHORITY, documentId));
@@ -386,33 +363,33 @@ public class MyCloudProvider extends DocumentsProvider {
                 }
             } else {
                 // cache miss
-                cacheEntry = new CacheEntry();
-                cache_ls.put(parentDocumentId, cacheEntry); //this indicates WIP
+                CacheEntry newCacheEntry = new CacheEntry();
+                cache_ls.put(parentDocumentId, newCacheEntry); //this indicates WIP
 
                 MatrixCursor wipCursor = connectingMatrixCursor(parentDocumentId);
 
-                try {
-                    CacheEntry finalCacheEntry = cacheEntry;
-                    sftp_client_mt.ls(getRemotePath(parentDocumentId), new SFTP.onGetFileListener() {
-                        @Override
-                        public boolean listen(String entry) {
-                            if (entry.endsWith(" .") || entry.endsWith(" ..")) {
+                new Thread() {
+                    public void run() {
+                        CacheEntry finalCacheEntry = newCacheEntry;
+                        sftp_session.ls(getRemotePath(parentDocumentId), new SFTP.onGetFileListener() {
+                            @Override
+                            public boolean listen(String entry) {
+                                if (entry.endsWith(" .") || entry.endsWith(" ..")) {
 
-                            } else {
-                                finalCacheEntry.files.add(entry);
+                                } else {
+                                    finalCacheEntry.files.add(entry);
+                                }
+                                return true;
                             }
-                            return true;
-                        }
 
-                        @Override
-                        public void done() {
-                            finalCacheEntry.loading = false;
-                            getContext().getContentResolver().notifyChange(DocumentsContract.buildDocumentUri(BuildConfig.DOCUMENTS_AUTHORITY, parentDocumentId), null);
-                        }
-                    });
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
+                            @Override
+                            public void done() {
+                                finalCacheEntry.loading = false;
+                                getContext().getContentResolver().notifyChange(DocumentsContract.buildDocumentUri(BuildConfig.DOCUMENTS_AUTHORITY, parentDocumentId), null);
+                            }
+                        });
+                    }
+                }.start();
 
                 return wipCursor;
             }
@@ -426,43 +403,12 @@ public class MyCloudProvider extends DocumentsProvider {
     public ParcelFileDescriptor openDocument(final String documentId, final String mode, CancellationSignal signal)
             throws FileNotFoundException {
 
-        ParcelFileDescriptor pfd = null;
-
         //Log.v(TAG, "openDocument, mode: " + mode + " " + documentId);
         try {
-
-            return pfd = sftp_session.GetParcelFileDescriptor(mStorageManager, getRemotePath(documentId), mode);
-
+            return sftp_session.GetParcelFileDescriptor(getContext(), mStorageManager, getRemotePath(documentId), mode);
         } catch (IOException e) {
             throw new IllegalStateException(e);
         }
-/*
-        try {
-            ParcelFileDescriptor[] pipe = ParcelFileDescriptor.createReliablePipe();
-            final ParcelFileDescriptor readEnd = pipe[0];
-            final ParcelFileDescriptor writeEnd = pipe[1];
-
-             synchronized (this) {
-                if (mode.startsWith("r")) {
-                    sftp_client_mt.get(getRemotePath(documentId), writeEnd);
-                    return readEnd;
-                } else if (mode.startsWith("w")) {
-                    sftp_client_mt.put(getRemotePath(documentId), readEnd);
-                    notifyChange(getParent(documentId));
-                    return writeEnd;
-                }
-            }
-
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
-
-        ParcelFileDescriptor o = null;
-        return o;
- */
-
     }
     // END_INCLUDE(open_document)
 
@@ -498,7 +444,10 @@ public class MyCloudProvider extends DocumentsProvider {
         }
 
         String newName = getParent(documentId)+"/"+displayName;
-        sftp_client.rename(getRemotePath(documentId), getRemotePath(newName));
+        int res = sftp_session.rename(getRemotePath(documentId), getRemotePath(newName));
+        if (res <0) {
+            throw new FileNotFoundException(sftp_session.getLastError());
+        }
 
         String parentDocumentId = getParent(documentId);
         notifyChange(parentDocumentId);
@@ -512,9 +461,9 @@ public class MyCloudProvider extends DocumentsProvider {
     @Override
     public void deleteDocument(String documentId) throws FileNotFoundException {
         Log.v(TAG, "deleteDocument " + documentId);
-        int res = sftp_client.rm(getRemotePath(documentId));
+        int res = sftp_session.rm(getRemotePath(documentId));
         if (res <0) {
-            throw new FileNotFoundException(sftp_client.getLastError());
+            throw new FileNotFoundException(sftp_session.getLastError());
         }
 
         String parentDocumentId = getParent(documentId);
@@ -544,9 +493,9 @@ public class MyCloudProvider extends DocumentsProvider {
         if (i>0) {
             String newDocumentID = targetParentDocumentId + sourceDocumentId.substring(i);
 
-            int res = sftp_client.cp(getRemotePath(sourceDocumentId), getRemotePath(targetParentDocumentId));
+            int res = sftp_session.cp(getRemotePath(sourceDocumentId), getRemotePath(targetParentDocumentId));
             if (res <0) {
-                throw new FileNotFoundException(sftp_client.getLastError());
+                throw new FileNotFoundException(sftp_session.getLastError());
             }
 
             notifyChange(targetParentDocumentId);
@@ -568,7 +517,7 @@ public class MyCloudProvider extends DocumentsProvider {
 
         String targetDocumentId = targetParentDocumentId +  sourceDocumentId.substring(sourceParentDocumentId.length());
 
-        int res = sftp_client.rename(getRemotePath(sourceDocumentId), getRemotePath(targetDocumentId) );
+        int res = sftp_session.rename(getRemotePath(sourceDocumentId), getRemotePath(targetDocumentId) );
         if (res<0) {
             Log.e(TAG, "Error renaming" + String.format("%s -> %s\n", sourceDocumentId, targetDocumentId));
             throw new FileNotFoundException("Failed to move document " + sourceDocumentId);
@@ -625,7 +574,6 @@ public class MyCloudProvider extends DocumentsProvider {
      * @param result the cursor to modify
      * @param parentId  the document ID representing the desired file (may be null if given file)
      * @param entry   the string with all the data of the docId)
-     * @throws FileNotFoundException
      */
     private void includeFile(MatrixCursor result, String parentId, String entry) {
 

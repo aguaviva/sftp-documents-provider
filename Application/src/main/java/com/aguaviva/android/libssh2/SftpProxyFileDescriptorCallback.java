@@ -1,6 +1,8 @@
 package com.aguaviva.android.libssh2;
 
 import android.annotation.TargetApi;
+import android.content.Context;
+import android.content.Intent;
 import android.net.Uri;
 import android.os.CancellationSignal;
 import android.os.ProxyFileDescriptorCallback;
@@ -22,10 +24,12 @@ public class SftpProxyFileDescriptorCallback extends ProxyFileDescriptorCallback
     private static final String TAG = "SftpProxyFileCallback";
 
     SftpFile mFile;
+    Context context;
 
     public SftpProxyFileDescriptorCallback(
-            SftpFile mFile) {
+            SftpFile mFile, Context context) {
         this.mFile = mFile;
+        this.context = context;
     }
 
     @Override
@@ -44,14 +48,29 @@ public class SftpProxyFileDescriptorCallback extends ProxyFileDescriptorCallback
     public int onRead(long offset, int size, byte[] data) throws ErrnoException {
         //final ByteBuffer buffer = mBufferPool.obtainBuffer();
         int bytes_read = 0;
+
+/*
+        long time_start = System.currentTimeMillis();
+*/
         try {
             mFile.seek(offset);
             bytes_read = mFile.read(data,size);
         } catch (IOException e) {
             throwErrnoException(e);
-        } finally {
-            //mBufferPool.recycleBuffer(buffer);
         }
+/*
+        long time_end = System.currentTimeMillis();
+        long time_delta = (time_end - time_start);
+        float kbps = (bytes_read / 1024.0f) / ((float)time_delta/1000.0f);
+        String filename = mFile.filename;
+        Log.i(TAG, String.format("%s %7.2f Kb/s", filename.substring(Math.max(0,filename.lastIndexOf("/"))), kbps));
+
+        Intent intent = new Intent("LOG_MESSAGE");    //action: "msg"
+        intent.putExtra("TIME", time_end);
+        intent.putExtra("DELTA", time_delta);
+        intent.putExtra("DATA", (float)(bytes_read / 1024.0f));
+        context.getApplicationContext().sendBroadcast(intent);
+*/
 
         return bytes_read;
     }
@@ -59,6 +78,7 @@ public class SftpProxyFileDescriptorCallback extends ProxyFileDescriptorCallback
     @Override
     public int onWrite(long offset, int size, byte[] data) throws ErrnoException {
         int bytes_write = 0;
+
         try {
             mFile.seek(offset);
             bytes_write = mFile.write(data,size);
@@ -83,7 +103,7 @@ public class SftpProxyFileDescriptorCallback extends ProxyFileDescriptorCallback
     }
 
     private void throwErrnoException(IOException e) throws ErrnoException {
-        // Hack around that SambaProxyFileCallback throws ErrnoException rather than IOException
+        // Hack around that ProxyFileCallback throws ErrnoException rather than IOException
         // assuming the underlying cause is an ErrnoException.
         if (e.getCause() instanceof ErrnoException) {
             throw (ErrnoException) e.getCause();
