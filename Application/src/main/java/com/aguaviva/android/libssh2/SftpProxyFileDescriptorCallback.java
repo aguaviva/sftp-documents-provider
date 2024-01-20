@@ -22,14 +22,18 @@ import java.nio.ByteBuffer;
 @TargetApi(26)
 public class SftpProxyFileDescriptorCallback extends ProxyFileDescriptorCallback {
     private static final String TAG = "SftpProxyFileCallback";
-
     SftpFile mFile;
     Context context;
 
-    public SftpProxyFileDescriptorCallback(
-            SftpFile mFile, Context context) {
+    public interface Listener {
+        public void close();
+    }
+    private Listener listener;
+
+    public SftpProxyFileDescriptorCallback(SftpFile mFile, Context context, Listener listener) {
         this.mFile = mFile;
         this.context = context;
+        this.listener = listener;
     }
 
     @Override
@@ -97,6 +101,8 @@ public class SftpProxyFileDescriptorCallback extends ProxyFileDescriptorCallback
     public void onRelease() {
         try {
             mFile.close();
+            if (listener != null)
+                listener.close();
         } catch (IOException e) {
             Log.e(TAG, "Failed to close file", e);
         }

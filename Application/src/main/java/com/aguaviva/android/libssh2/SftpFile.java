@@ -13,6 +13,8 @@ public class SftpFile {
     long bytes_written = 0;
     int ssh2_sftp_session = -1;
     int sftp_handle_id = -1;
+
+
     public void open(int ssh2_sftp_session, String filename, String mode, Object lock) throws FileNotFoundException {
         this.lock = lock;
         this.filename = filename;
@@ -34,6 +36,7 @@ public class SftpFile {
             }
         }
     }
+
     public void close() throws IOException {
         Log.v(TAG, "close: " + filename + "  ( r: " + bytes_read + " w: " + bytes_written+" )");
 

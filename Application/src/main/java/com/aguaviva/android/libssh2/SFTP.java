@@ -15,7 +15,7 @@ public class SFTP extends SFTP_Auth{
         boolean listen(String file);
         void done();
     }
-    public synchronized int ls(String path, SFTP.onGetFileListener listener) {
+    public synchronized int ls(String path, onGetFileListener listener) {
 
         String pathname = getRoot() + path;
 

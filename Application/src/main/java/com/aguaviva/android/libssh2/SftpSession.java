@@ -43,10 +43,20 @@ public class SftpSession extends SFTP {
         });
     }
 
-    public ParcelFileDescriptor GetParcelFileDescriptor(Context context, StorageManager storageManager, String filename, String mode) throws IOException {
+    public interface Listener {
+        public void close();
+    }
+    private Listener listener;
 
-        SftpFile mFile = this.getFileHandler(filename, mode);
-        SftpProxyFileDescriptorCallback fd =  new SftpProxyFileDescriptorCallback(mFile, context);
+    public ParcelFileDescriptor GetParcelFileDescriptor(Context context, StorageManager storageManager, String filename, String mode, Listener listener) throws IOException {
+
+        SftpFile mFile = getFileHandler(filename, mode);
+        SftpProxyFileDescriptorCallback fd =  new SftpProxyFileDescriptorCallback(mFile, context, new SftpProxyFileDescriptorCallback.Listener() {
+            @Override
+            public void close() {
+                listener.close();
+            }
+        });
 
         if (SDK_INT >= Build.VERSION_CODES.O) {
             return storageManager.openProxyFileDescriptor(

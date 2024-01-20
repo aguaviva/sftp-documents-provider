@@ -376,7 +376,15 @@ public class MyCloudProvider extends DocumentsProvider {
 
         //Log.v(TAG, "openDocument, mode: " + mode + " " + documentId);
         try {
-            return sftp_session.GetParcelFileDescriptor(getContext(), mStorageManager, getRemotePath(documentId), mode);
+            return sftp_session.GetParcelFileDescriptor(getContext(), mStorageManager, getRemotePath(documentId), mode, new SftpSession.Listener() {
+                @Override
+                public void close() {
+                    if (mode.startsWith("w")) {
+                        String parentDocumentId = getParent(documentId);
+                        notifyChange(parentDocumentId);
+                    }
+                }
+            });
         } catch (IOException e) {
             throw new IllegalStateException(e);
         }
