@@ -25,11 +25,21 @@ public class SftpFile {
         if (mode.startsWith("r")) {
             flags |= Ssh2.LIBSSH2_FXF_READ;
         } else if (mode.startsWith("w")) {
+            flags |= Ssh2.LIBSSH2_FXF_CREAT;
+            flags |= Ssh2.LIBSSH2_FXF_WRITE;
+        } else if (mode.startsWith("rw")) {
+            flags |= Ssh2.LIBSSH2_FXF_READ;
             flags |= Ssh2.LIBSSH2_FXF_WRITE;
         }
 
+        int permissions_flags =
+            Ssh2.LIBSSH2_SFTP_S_IRUSR |
+            Ssh2.LIBSSH2_SFTP_S_IWUSR |
+            Ssh2.LIBSSH2_SFTP_S_IRGRP |
+            Ssh2.LIBSSH2_SFTP_S_IWGRP;
+
         synchronized (lock) {
-            sftp_handle_id = Ssh2.openfile(ssh2_sftp_session, filename, flags, 0);
+            sftp_handle_id = Ssh2.openfile(ssh2_sftp_session, filename, flags, permissions_flags);
             if (sftp_handle_id < 0) {
                 Log.e(TAG, "open " + filename);
                 throw new FileNotFoundException(Ssh2.session_last_error(ssh2_sftp_session));

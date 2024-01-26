@@ -329,7 +329,7 @@ public class MyCloudProvider extends DocumentsProvider {
                         includeFile(result, parentDocumentId, entry);
                     }
 
-                    result.setNotificationUri(getContext().getContentResolver(), DocumentsContract.buildDocumentUri(BuildConfig.DOCUMENTS_AUTHORITY, parentDocumentId));
+                    result.setNotificationUri(getContext().getContentResolver(), DocumentsContract.buildChildDocumentsUri(BuildConfig.DOCUMENTS_AUTHORITY, parentDocumentId));
                     return result;
                 }
             } else {
@@ -379,7 +379,7 @@ public class MyCloudProvider extends DocumentsProvider {
             return sftp_session.GetParcelFileDescriptor(getContext(), mStorageManager, getRemotePath(documentId), mode, new SftpSession.Listener() {
                 @Override
                 public void close() {
-                    if (mode.startsWith("w")) {
+                    if (mode.startsWith("w") || mode.startsWith("rw") ) {
                         String parentDocumentId = getParent(documentId);
                         notifyChange(parentDocumentId);
                     }

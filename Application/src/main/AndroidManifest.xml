@@ -49,13 +49,21 @@
             android:name=".ActivityNetworkGraph"
             android:exported="false"
             android:configChanges="orientation|screenSize|keyboardHidden" />
-        <receiver
-            android:name=".MyBroadcastReceiver"
-            android:exported="false">
+        <activity
+            android:name=".ActivityShareReceiver"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            android:exported="true">
             <intent-filter>
-                <action android:name="APP_SPECIFIC_BROADCAST" />
+                <action android:name="android.intent.action.SEND" />
+                <data android:mimeType="*/*" />
+                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
-        </receiver>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <data android:mimeType="*/*" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
 
         <activity
             android:name=".ActivityListConnections"
