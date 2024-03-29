@@ -30,6 +30,7 @@ Notes
 Pre-requisites
 --------------
 
+- IDE: Android Studio Hedgehog | 2023.1.1  (This is what I used but prob not required)
 - Android SDK 28
 - Android Build Tools v28.0.3
 - Android Support Repository
